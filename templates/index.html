@@ -1,0 +1,2501 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>BTC Long Hunter Console</title>
+    <style>
+        :root {
+            --bg: #0f1419;
+            --panel: #171d24;
+            --panel-2: #1f2730;
+            --border: #2d3945;
+            --text: #d8dee7;
+            --muted: #8a97a6;
+            --accent: #2f81f7;
+            --good: #35b779;
+            --warn: #d29922;
+            --bad: #e5534b;
+        }
+        * { box-sizing: border-box; }
+        body {
+            margin: 0;
+            background: var(--bg);
+            color: var(--text);
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Arial, sans-serif;
+        }
+        header {
+            height: 58px;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding: 0 18px;
+            border-bottom: 1px solid var(--border);
+            background: #111820;
+        }
+        h1 {
+            font-size: 18px;
+            margin: 0;
+            letter-spacing: 0;
+        }
+        .header-actions {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            min-width: 0;
+        }
+        button, select, input, textarea {
+            font: inherit;
+        }
+        button {
+            background: var(--panel-2);
+            color: var(--text);
+            border: 1px solid var(--border);
+            border-radius: 6px;
+            padding: 8px 12px;
+            cursor: pointer;
+        }
+        button:hover { border-color: var(--accent); }
+        button.primary {
+            background: var(--accent);
+            border-color: var(--accent);
+            color: white;
+        }
+        .shell {
+            display: grid;
+            grid-template-columns: 320px minmax(0, 1fr) 380px;
+            height: calc(100vh - 58px);
+            min-height: 640px;
+        }
+        aside, main, .context-pane {
+            min-width: 0;
+            overflow: hidden;
+        }
+        aside {
+            border-right: 1px solid var(--border);
+            background: var(--panel);
+            display: flex;
+            flex-direction: column;
+        }
+        .context-pane {
+            border-left: 1px solid var(--border);
+            background: var(--panel);
+            display: flex;
+            flex-direction: column;
+        }
+        .toolbar {
+            padding: 12px;
+            border-bottom: 1px solid var(--border);
+            display: flex;
+            gap: 8px;
+            align-items: center;
+        }
+        .toolbar input, .toolbar select {
+            width: 100%;
+            background: var(--bg);
+            color: var(--text);
+            border: 1px solid var(--border);
+            border-radius: 6px;
+            padding: 8px 10px;
+        }
+        .run-list {
+            overflow: auto;
+            padding: 10px;
+            display: flex;
+            flex-direction: column;
+            gap: 8px;
+        }
+        .run-card {
+            background: var(--panel-2);
+            border: 1px solid var(--border);
+            border-radius: 8px;
+            padding: 10px;
+            cursor: pointer;
+            content-visibility: auto;
+            contain: layout style paint;
+            contain-intrinsic-size: 120px;
+        }
+        .run-card.active {
+            border-color: var(--accent);
+            box-shadow: inset 3px 0 0 var(--accent);
+        }
+        .run-title {
+            display: flex;
+            justify-content: space-between;
+            gap: 8px;
+            font-size: 13px;
+            color: var(--muted);
+        }
+        .run-price {
+            font-size: 18px;
+            font-weight: 700;
+            margin: 8px 0 4px;
+        }
+        .run-preview {
+            font-size: 12px;
+            line-height: 1.45;
+            color: var(--muted);
+        }
+        .pill {
+            display: inline-flex;
+            align-items: center;
+            border-radius: 999px;
+            padding: 2px 7px;
+            font-size: 11px;
+            font-weight: 700;
+            background: rgba(47, 129, 247, 0.16);
+            color: #8bbcff;
+            white-space: nowrap;
+        }
+        main {
+            display: flex;
+            flex-direction: column;
+        }
+        .main-tabs {
+            display: flex;
+            gap: 8px;
+            padding: 12px 14px;
+            border-bottom: 1px solid var(--border);
+            background: #111820;
+        }
+        .tab-btn.active {
+            background: var(--accent);
+            border-color: var(--accent);
+            color: white;
+        }
+        .content {
+            overflow: auto;
+            padding: 16px;
+        }
+        .tab-page { display: none; }
+        .tab-page.active { display: block; }
+        .empty {
+            color: var(--muted);
+            padding: 18px;
+            background: var(--panel);
+            border: 1px solid var(--border);
+            border-radius: 8px;
+        }
+        .section {
+            background: var(--panel);
+            border: 1px solid var(--border);
+            border-radius: 8px;
+            padding: 14px;
+            margin-bottom: 14px;
+            content-visibility: auto;
+            contain: layout style paint;
+            contain-intrinsic-size: 320px;
+        }
+        .section h2, .section h3 {
+            margin: 0 0 10px;
+            font-size: 15px;
+        }
+        .narrative {
+            white-space: pre-wrap;
+            line-height: 1.65;
+            color: var(--text);
+        }
+        .forecast-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
+            gap: 12px;
+        }
+        .forecast {
+            background: var(--panel-2);
+            border: 1px solid var(--border);
+            border-radius: 8px;
+            padding: 12px;
+            content-visibility: auto;
+            contain: layout style paint;
+            contain-intrinsic-size: 260px;
+        }
+        .forecast strong {
+            font-size: 20px;
+        }
+        .kv {
+            display: grid;
+            grid-template-columns: 130px 1fr;
+            gap: 8px;
+            font-size: 13px;
+            margin-top: 8px;
+        }
+        .kv span:nth-child(odd) { color: var(--muted); }
+        .table-wrap {
+            overflow: auto;
+            border: 1px solid var(--border);
+            border-radius: 8px;
+            background: #0b1016;
+        }
+        .market-table {
+            width: 100%;
+            border-collapse: collapse;
+            min-width: 640px;
+            font-size: 12px;
+        }
+        .market-table th,
+        .market-table td {
+            border-bottom: 1px solid var(--border);
+            padding: 8px 10px;
+            text-align: left;
+            vertical-align: top;
+            white-space: nowrap;
+        }
+        .market-table th {
+            color: var(--muted);
+            background: rgba(31, 39, 48, 0.88);
+            position: sticky;
+            top: 0;
+            z-index: 1;
+        }
+        .market-table td.wide {
+            white-space: normal;
+            min-width: 180px;
+        }
+        .market-block {
+            margin-bottom: 14px;
+        }
+        .market-block:last-child {
+            margin-bottom: 0;
+        }
+        .market-block h3 {
+            margin-bottom: 8px;
+        }
+        pre {
+            white-space: pre-wrap;
+            word-break: break-word;
+            background: #0b1016;
+            border: 1px solid var(--border);
+            border-radius: 8px;
+            padding: 12px;
+            margin: 0;
+            color: #c9d1d9;
+            font-size: 12px;
+            line-height: 1.5;
+        }
+        details {
+            background: var(--panel-2);
+            border: 1px solid var(--border);
+            border-radius: 8px;
+            padding: 10px 12px;
+            margin-bottom: 10px;
+            content-visibility: auto;
+            contain: layout style paint;
+            contain-intrinsic-size: 44px;
+        }
+        summary {
+            cursor: pointer;
+            color: var(--text);
+            font-weight: 700;
+        }
+        .chat {
+            display: grid;
+            grid-template-rows: minmax(260px, 1fr) auto;
+            gap: 12px;
+            height: calc(100vh - 150px);
+        }
+        .messages {
+            overflow: auto;
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
+        }
+        .msg {
+            border: 1px solid var(--border);
+            border-radius: 8px;
+            padding: 10px;
+            line-height: 1.55;
+            white-space: pre-wrap;
+        }
+        .msg.user { background: rgba(47, 129, 247, 0.12); }
+        .msg.assistant { background: var(--panel); }
+        .chat-form {
+            display: grid;
+            grid-template-columns: 1fr auto;
+            gap: 10px;
+        }
+        textarea {
+            width: 100%;
+            min-height: 74px;
+            resize: vertical;
+            background: var(--panel);
+            color: var(--text);
+            border: 1px solid var(--border);
+            border-radius: 8px;
+            padding: 10px;
+        }
+        .context-tabs {
+            display: flex;
+            gap: 6px;
+            padding: 10px;
+            border-bottom: 1px solid var(--border);
+            flex-wrap: wrap;
+        }
+        .context-tab {
+            padding: 6px 9px;
+            font-size: 12px;
+        }
+        .context-tab.active {
+            background: var(--accent);
+            border-color: var(--accent);
+        }
+        .context-body {
+            overflow: auto;
+            padding: 12px;
+        }
+        .signal-card {
+            background: var(--panel-2);
+            border: 1px solid var(--border);
+            border-radius: 8px;
+            padding: 12px;
+            margin-bottom: 10px;
+            content-visibility: auto;
+            contain: layout style paint;
+            contain-intrinsic-size: 180px;
+        }
+        .gate-progress-grid {
+            display: grid;
+            grid-template-columns: repeat(2, minmax(0, 1fr));
+            gap: 12px;
+            margin-top: 12px;
+        }
+        .gate-card {
+            background: var(--panel-2);
+            border: 1px solid var(--border);
+            border-radius: 8px;
+            padding: 12px;
+        }
+        .gate-header {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            gap: 8px;
+            margin-bottom: 8px;
+        }
+        .gate-title {
+            font-weight: 700;
+            font-size: 14px;
+        }
+        .gate-progress-track {
+            width: 100%;
+            height: 8px;
+            border-radius: 999px;
+            background: #0b1016;
+            border: 1px solid var(--border);
+            overflow: hidden;
+            margin-bottom: 8px;
+        }
+        .gate-progress-fill {
+            height: 100%;
+            background: var(--accent);
+        }
+        .gate-progress-fill.good { background: var(--good); }
+        .gate-progress-fill.warn { background: var(--warn); }
+        .gate-progress-fill.bad { background: var(--bad); }
+        .gate-meta {
+            display: grid;
+            grid-template-columns: 130px 1fr;
+            gap: 6px 8px;
+            font-size: 12px;
+            margin-top: 8px;
+        }
+        .gate-meta span:nth-child(odd) { color: var(--muted); }
+        .signal-title {
+            font-weight: 700;
+            line-height: 1.35;
+            margin-bottom: 8px;
+        }
+        .signal-meta {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 6px;
+            margin-bottom: 8px;
+        }
+        .reason {
+            color: var(--muted);
+            font-size: 13px;
+            line-height: 1.5;
+        }
+        .manual-trigger-form {
+            display: grid;
+            gap: 10px;
+        }
+        .action-row {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            gap: 10px;
+            flex-wrap: wrap;
+        }
+        .muted {
+            color: var(--muted);
+            font-size: 12px;
+            line-height: 1.5;
+        }
+        .signal-toolbar {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            gap: 10px;
+            flex-wrap: wrap;
+            margin-bottom: 14px;
+        }
+        .pager {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            flex-wrap: wrap;
+        }
+        .pager-status {
+            color: var(--muted);
+            font-size: 12px;
+        }
+        .signal-filter-group {
+            display: flex;
+            gap: 10px;
+            align-items: center;
+            flex-wrap: wrap;
+            width: 100%;
+        }
+        .signal-filter-group select,
+        .signal-filter-group input {
+            background: var(--bg);
+            color: var(--text);
+            border: 1px solid var(--border);
+            border-radius: 6px;
+            padding: 8px 10px;
+        }
+        .signal-filter-group input {
+            min-width: 240px;
+            flex: 1 1 280px;
+        }
+        .signal-overview {
+            display: grid;
+            grid-template-columns: repeat(4, minmax(0, 1fr));
+            gap: 12px;
+            margin-bottom: 14px;
+        }
+        .signal-stat {
+            background: var(--panel-2);
+            border: 1px solid var(--border);
+            border-radius: 8px;
+            padding: 12px;
+        }
+        .signal-stat-label {
+            color: var(--muted);
+            font-size: 12px;
+            margin-bottom: 8px;
+        }
+        .signal-stat-value {
+            font-size: 24px;
+            font-weight: 700;
+        }
+        .signal-stat-sub {
+            color: var(--muted);
+            font-size: 12px;
+            margin-top: 6px;
+        }
+        .stats-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
+            gap: 12px;
+            margin-bottom: 14px;
+        }
+        .stats-block-grid {
+            display: grid;
+            grid-template-columns: repeat(2, minmax(0, 1fr));
+            gap: 12px;
+            align-items: start;
+        }
+        .stats-bar-list {
+            display: grid;
+            gap: 8px;
+        }
+        .stats-bar-row {
+            display: grid;
+            grid-template-columns: 52px 1fr 44px;
+            gap: 10px;
+            align-items: center;
+            font-size: 12px;
+        }
+        .stats-bar-track {
+            position: relative;
+            height: 10px;
+            border-radius: 999px;
+            background: #0b1016;
+            border: 1px solid var(--border);
+            overflow: hidden;
+        }
+        .stats-bar-fill {
+            height: 100%;
+            background: linear-gradient(90deg, #2f81f7, #6cb6ff);
+        }
+        .stats-mini {
+            color: var(--muted);
+            font-size: 12px;
+            margin-top: 8px;
+        }
+        .stats-source-tabs {
+            display: flex;
+            gap: 8px;
+            flex-wrap: wrap;
+            margin-bottom: 14px;
+        }
+        .stats-source-btn {
+            background: var(--panel-2);
+            color: var(--text);
+            border: 1px solid var(--border);
+            border-radius: 999px;
+            padding: 6px 10px;
+            font-size: 12px;
+            font-weight: 700;
+            cursor: pointer;
+        }
+        .stats-source-btn.active {
+            background: var(--accent);
+            border-color: var(--accent);
+            color: white;
+        }
+        .lifecycle-board {
+            display: grid;
+            grid-template-columns: repeat(4, minmax(0, 1fr));
+            gap: 12px;
+            align-items: start;
+        }
+        .signal-lane {
+            background: var(--panel);
+            border: 1px solid var(--border);
+            border-radius: 8px;
+            overflow: hidden;
+            min-height: 220px;
+            content-visibility: auto;
+            contain: layout style paint;
+            contain-intrinsic-size: 520px;
+        }
+        .signal-lane-header {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            gap: 10px;
+            padding: 12px;
+            border-bottom: 1px solid var(--border);
+            background: #111820;
+        }
+        .signal-lane-title {
+            font-weight: 700;
+            font-size: 14px;
+        }
+        .signal-lane-body {
+            padding: 12px;
+        }
+        .signal-card.lifecycle-card {
+            margin-bottom: 12px;
+        }
+        .signal-card.lifecycle-card:last-child {
+            margin-bottom: 0;
+        }
+        .pill.good {
+            background: rgba(53, 183, 121, 0.18);
+            color: #71e1a6;
+        }
+        .pill.warn {
+            background: rgba(210, 153, 34, 0.18);
+            color: #f2c66a;
+        }
+        .pill.bad {
+            background: rgba(229, 83, 75, 0.18);
+            color: #ff8e88;
+        }
+        .pill.muted {
+            background: rgba(138, 151, 166, 0.16);
+            color: #b8c4d1;
+        }
+        .stage-list {
+            display: grid;
+            gap: 8px;
+            margin-top: 10px;
+        }
+        .stage-item {
+            background: rgba(11, 16, 22, 0.72);
+            border: 1px solid var(--border);
+            border-radius: 8px;
+            padding: 10px;
+        }
+        .stage-header {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            gap: 8px;
+            flex-wrap: wrap;
+            margin-bottom: 6px;
+        }
+        .stage-title {
+            font-size: 12px;
+            font-weight: 700;
+        }
+        .stage-time {
+            color: var(--muted);
+            font-size: 12px;
+        }
+        .timeline-entry {
+            padding: 10px 0;
+            border-top: 1px solid var(--border);
+        }
+        .timeline-entry:first-child {
+            border-top: none;
+            padding-top: 0;
+        }
+        .timeline-meta {
+            display: flex;
+            align-items: center;
+            gap: 6px;
+            flex-wrap: wrap;
+            margin-bottom: 6px;
+        }
+        .timeline-file {
+            color: var(--muted);
+            font-size: 12px;
+            word-break: break-all;
+        }
+        .service-toolbar {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            gap: 10px;
+            flex-wrap: wrap;
+            margin-bottom: 14px;
+        }
+        .service-grid {
+            display: grid;
+            grid-template-columns: repeat(2, minmax(0, 1fr));
+            gap: 12px;
+        }
+        .service-card {
+            background: var(--panel);
+            border: 1px solid var(--border);
+            border-radius: 8px;
+            overflow: hidden;
+            content-visibility: auto;
+            contain: layout style paint;
+            contain-intrinsic-size: 420px;
+        }
+        .service-card-header {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            gap: 10px;
+            flex-wrap: wrap;
+            padding: 12px;
+            border-bottom: 1px solid var(--border);
+            background: #111820;
+        }
+        .service-card-title {
+            font-weight: 700;
+            font-size: 15px;
+        }
+        .service-card-body {
+            padding: 12px;
+        }
+        .service-actions {
+            display: flex;
+            gap: 8px;
+            flex-wrap: wrap;
+            margin-bottom: 12px;
+        }
+        .service-actions button[disabled] {
+            opacity: 0.6;
+            cursor: not-allowed;
+        }
+        .service-log {
+            margin: 0;
+            background: #0b1016;
+            border: 1px solid var(--border);
+            border-radius: 8px;
+            padding: 10px;
+            max-height: 360px;
+            overflow: auto;
+            white-space: pre-wrap;
+            word-break: break-word;
+            font-size: 12px;
+            line-height: 1.5;
+        }
+        @media (max-width: 1100px) {
+            .shell {
+                grid-template-columns: 280px minmax(0, 1fr);
+            }
+            .context-pane {
+                display: none;
+            }
+            .gate-progress-grid,
+            .signal-overview,
+            .stats-grid,
+            .stats-block-grid,
+            .lifecycle-board,
+            .service-grid {
+                grid-template-columns: 1fr;
+            }
+        }
+        @media (max-width: 760px) {
+            .shell {
+                display: block;
+                height: auto;
+            }
+            aside, main {
+                height: auto;
+                min-height: 360px;
+            }
+            .chat {
+                height: 560px;
+            }
+        }
+    </style>
+</head>
+<body>
+    <header>
+        <h1>BTC Long Hunter Console</h1>
+        <div class="header-actions">
+            <span id="schedule-pill" class="pill">Next run loading...</span>
+            <button id="refresh-btn">Refresh</button>
+        </div>
+    </header>
+
+    <div class="shell">
+        <aside>
+            <div class="toolbar">
+                <input id="run-search" placeholder="Search run / thesis" />
+            </div>
+            <div id="run-list" class="run-list"></div>
+        </aside>
+
+        <main>
+            <div class="main-tabs">
+                <button class="tab-btn active" data-tab="report">Report</button>
+                <button class="tab-btn" data-tab="chat">Chat</button>
+                <button class="tab-btn" data-tab="signals">Signal Lifecycle</button>
+                <button class="tab-btn" data-tab="stats">Stats</button>
+                <button class="tab-btn" data-tab="services">Services</button>
+                <button class="tab-btn" data-tab="gates">Gates</button>
+            </div>
+            <div class="content">
+                <section id="tab-report" class="tab-page active"></section>
+                <section id="tab-chat" class="tab-page"></section>
+                <section id="tab-signals" class="tab-page"></section>
+                <section id="tab-stats" class="tab-page"></section>
+                <section id="tab-services" class="tab-page"></section>
+                <section id="tab-gates" class="tab-page"></section>
+            </div>
+        </main>
+
+        <section class="context-pane">
+            <div class="context-tabs">
+                <button class="context-tab active" data-context="news">News</button>
+                <button class="context-tab" data-context="polymarket">Polymarket</button>
+                <button class="context-tab" data-context="whale">Whale</button>
+                <button class="context-tab" data-context="input">Input MD</button>
+                <button class="context-tab" data-context="market">Market</button>
+                <button class="context-tab" data-context="quant">Quant</button>
+                <button class="context-tab" data-context="json">Prediction</button>
+            </div>
+            <div id="context-body" class="context-body"></div>
+        </section>
+    </div>
+
+    <script>
+        const state = {
+            runs: [],
+            currentRunId: null,
+            currentRun: null,
+            chatMessages: [],
+            chatPending: false,
+            longHunterStatus: null,
+            gateProgress: null,
+            gateStats: null,
+            gateStatsLoaded: false,
+            gateStatsLoading: false,
+            triggerInFlight: false,
+            gatedSignalsBuckets: {
+                active: [],
+                secondgate_skipped: [],
+                secondgate_dropped: [],
+                firstgate_dropped: [],
+            },
+            gatedSignalsSummary: {
+                active: 0,
+                secondgate_skipped: 0,
+                secondgate_dropped: 0,
+                firstgate_dropped: 0,
+            },
+            gatedSignalsTotalSummary: {
+                active: 0,
+                secondgate_skipped: 0,
+                secondgate_dropped: 0,
+                firstgate_dropped: 0,
+            },
+            gatedSignalsCount: 0,
+            gatedSignalsTotalCount: 0,
+            gatedSignalsSource: 'all',
+            gatedSignalsSearch: '',
+            gatedSignalsPageSize: 20,
+            gatedSignalsPageByBucket: {
+                active: 1,
+                secondgate_skipped: 1,
+                secondgate_dropped: 1,
+                firstgate_dropped: 1,
+            },
+            gatedSignalsPagination: {
+                active: { page: 1, page_size: 20, total: 0, total_pages: 1, has_prev: false, has_next: false, from: 0, to: 0 },
+                secondgate_skipped: { page: 1, page_size: 20, total: 0, total_pages: 1, has_prev: false, has_next: false, from: 0, to: 0 },
+                secondgate_dropped: { page: 1, page_size: 20, total: 0, total_pages: 1, has_prev: false, has_next: false, from: 0, to: 0 },
+                firstgate_dropped: { page: 1, page_size: 20, total: 0, total_pages: 1, has_prev: false, has_next: false, from: 0, to: 0 },
+            },
+            signalsLoading: false,
+            signalRequestSeq: 0,
+            signalsLoaded: false,
+            services: [],
+            servicesLoaded: false,
+            serviceLogLines: 120,
+            serviceBusy: {},
+            serviceLogScroll: {},
+            activeTab: 'report',
+            activeContext: 'news',
+            activeStatsSource: 'all',
+            contextShowAll: false,
+        };
+
+        const runList = document.getElementById('run-list');
+        const runSearch = document.getElementById('run-search');
+        const refreshBtn = document.getElementById('refresh-btn');
+        const schedulePill = document.getElementById('schedule-pill');
+        const tabButtons = Array.from(document.querySelectorAll('.tab-btn'));
+        const contextTabs = Array.from(document.querySelectorAll('.context-tab'));
+        const pages = {
+            report: document.getElementById('tab-report'),
+            chat: document.getElementById('tab-chat'),
+            signals: document.getElementById('tab-signals'),
+            stats: document.getElementById('tab-stats'),
+            services: document.getElementById('tab-services'),
+            gates: document.getElementById('tab-gates'),
+        };
+        const contextBody = document.getElementById('context-body');
+        let servicesPollTimer = null;
+        let statusPollTimer = null;
+        let signalSearchTimer = null;
+
+        function escapeHtml(value) {
+            return String(value ?? '')
+                .replace(/&/g, '&amp;')
+                .replace(/</g, '&lt;')
+                .replace(/>/g, '&gt;')
+                .replace(/"/g, '&quot;')
+                .replace(/'/g, '&#39;');
+        }
+
+        function asJson(value) {
+            return escapeHtml(JSON.stringify(value ?? null, null, 2));
+        }
+
+        function formatScalar(value) {
+            if (value === null || value === undefined || value === '') return '-';
+            if (typeof value === 'number') {
+                return Number.isInteger(value) ? String(value) : value.toFixed(4).replace(/\.?0+$/, '');
+            }
+            return String(value);
+        }
+
+        function renderTable(headers, rows) {
+            if (!Array.isArray(rows) || !rows.length) {
+                return '<div class="empty">No rows.</div>';
+            }
+            return `
+                <div class="table-wrap">
+                    <table class="market-table">
+                        <thead>
+                            <tr>${headers.map(header => `<th>${escapeHtml(header.label)}</th>`).join('')}</tr>
+                        </thead>
+                        <tbody>
+                            ${rows.map(row => `
+                                <tr>
+                                    ${headers.map(header => {
+                                        const value = row[header.key];
+                                        const cellClass = header.wide ? ' class="wide"' : '';
+                                        return `<td${cellClass}>${escapeHtml(formatScalar(value))}</td>`;
+                                    }).join('')}
+                                </tr>
+                            `).join('')}
+                        </tbody>
+                    </table>
+                </div>
+            `;
+        }
+
+        function renderMetricPairs(title, metricMap) {
+            const entries = Object.entries(metricMap || {});
+            if (!entries.length) {
+                return '';
+            }
+            const rows = [];
+            for (let i = 0; i < entries.length; i += 2) {
+                const left = entries[i] || ['', '-'];
+                const right = entries[i + 1] || ['', '-'];
+                rows.push({
+                    metric_a: left[0] || '-',
+                    value_a: formatScalar(left[1]),
+                    metric_b: right[0] || '-',
+                    value_b: formatScalar(right[1]),
+                });
+            }
+            return `
+                <div class="market-block">
+                    <h3>${escapeHtml(title)}</h3>
+                    ${renderTable(
+                        [
+                            { key: 'metric_a', label: 'Metric' },
+                            { key: 'value_a', label: 'Value' },
+                            { key: 'metric_b', label: 'Metric' },
+                            { key: 'value_b', label: 'Value' },
+                        ],
+                        rows,
+                    )}
+                </div>
+            `;
+        }
+
+        function renderMarketSection(title, section) {
+            if (!section || typeof section !== 'object') {
+                return `<div class="market-block"><h3>${escapeHtml(title)}</h3><div class="empty">No section data.</div></div>`;
+            }
+            const summary = section.summary || {};
+            const trendStack = summary.trend_stack || {};
+            const summaryRows = [
+                {
+                    period: summary.period,
+                    latest_time_bj: summary.latest_time_bj,
+                    current_price: summary.current_price,
+                    return_30_periods_pct: summary.return_30_periods_pct,
+                    return_90_periods_pct: summary.return_90_periods_pct,
+                    return_180_periods_pct: summary.return_180_periods_pct,
+                    drawdown_from_high_pct: summary.drawdown_from_high_pct,
+                    recovery_from_low_pct: summary.recovery_from_low_pct,
+                },
+            ];
+            const recentRows = Array.isArray(section.recent_rows) ? section.recent_rows.slice(-12) : [];
+            const trendRows = Object.keys(trendStack).length ? [
+                {
+                    close_above_ma25: trendStack.close_above_ma25,
+                    close_above_ma99: trendStack.close_above_ma99,
+                    close_above_ema200: trendStack.close_above_ema200,
+                },
+            ] : [];
+            return `
+                <div class="market-block">
+                    <h3>${escapeHtml(title)}</h3>
+                    ${renderTable(
+                        [
+                            { key: 'period', label: 'Period' },
+                            { key: 'latest_time_bj', label: 'Latest BJ Time' },
+                            { key: 'current_price', label: 'Current Price' },
+                            { key: 'return_30_periods_pct', label: 'Return 30' },
+                            { key: 'return_90_periods_pct', label: 'Return 90' },
+                            { key: 'return_180_periods_pct', label: 'Return 180' },
+                            { key: 'drawdown_from_high_pct', label: 'Drawdown %' },
+                            { key: 'recovery_from_low_pct', label: 'Recovery %' },
+                        ],
+                        summaryRows,
+                    )}
+                    ${trendRows.length ? `
+                        <div style="margin-top:10px;">
+                            ${renderTable(
+                                [
+                                    { key: 'close_above_ma25', label: 'Above MA25' },
+                                    { key: 'close_above_ma99', label: 'Above MA99' },
+                                    { key: 'close_above_ema200', label: 'Above EMA200' },
+                                ],
+                                trendRows,
+                            )}
+                        </div>
+                    ` : ''}
+                    ${renderMetricPairs(`${title} Latest Indicators`, summary.latest_indicators || {})}
+                    <div class="market-block">
+                        <h3>${escapeHtml(title)} Recent Rows</h3>
+                        ${renderTable(
+                            [
+                                { key: 'timestamp', label: 'Timestamp' },
+                                { key: 'open', label: 'Open' },
+                                { key: 'high', label: 'High' },
+                                { key: 'low', label: 'Low' },
+                                { key: 'close', label: 'Close' },
+                                { key: 'volume', label: 'Volume' },
+                                { key: 'rsi', label: 'RSI' },
+                                { key: 'macd', label: 'MACD' },
+                                { key: 'signal', label: 'Signal' },
+                                { key: 'histo', label: 'Histo' },
+                                { key: 'atr14', label: 'ATR14' },
+                                { key: 'adx14', label: 'ADX14' },
+                            ],
+                            recentRows,
+                        )}
+                    </div>
+                </div>
+            `;
+        }
+
+        function renderMarketContext(marketContext) {
+            const context = marketContext || {};
+            if (!Object.keys(context).length) {
+                return '<div class="empty">No market context for this run.</div>';
+            }
+            return `
+                <div class="section">
+                    <h2>Market Snapshot</h2>
+                    <div class="kv">
+                        <span>Symbol</span><span>${escapeHtml(context.symbol || '-')}</span>
+                        <span>Generated</span><span>${escapeHtml(context.generated_at_bj || '-')}</span>
+                        <span>Current Price</span><span>${escapeHtml(formatScalar(context.current_price))}</span>
+                    </div>
+                    <div style="margin-top:12px;">
+                        ${renderMarketSection('Daily', context.daily)}
+                        ${renderMarketSection('Monthly', context.monthly)}
+                    </div>
+                </div>
+            `;
+        }
+
+        function renderBacktestMetricsTable(metrics) {
+            const rows = ['VA', 'DCA', 'REBALANCE'].map(name => {
+                const row = (metrics || {})[name] || {};
+                return {
+                    strategy: name,
+                    final_value: row.final_value,
+                    total_return_pct: row.total_return_pct,
+                    annualized_return_pct: row.annualized_return_pct,
+                    annualized_vol_pct: row.annualized_vol_pct,
+                    sharpe_like: row.sharpe_like,
+                    max_drawdown_pct: row.max_drawdown_pct,
+                };
+            });
+            return renderTable(
+                [
+                    { key: 'strategy', label: 'Strategy' },
+                    { key: 'final_value', label: 'Final Value' },
+                    { key: 'total_return_pct', label: 'Total Return %' },
+                    { key: 'annualized_return_pct', label: 'Ann Return %' },
+                    { key: 'annualized_vol_pct', label: 'Ann Vol %' },
+                    { key: 'sharpe_like', label: 'Sharpe-like' },
+                    { key: 'max_drawdown_pct', label: 'Max DD %' },
+                ],
+                rows,
+            );
+        }
+
+        function renderQuantResearchSection(quant, backtestFallback) {
+            const research = quant || {};
+            if (!Object.keys(research).length) {
+                return '<div class="section"><h2>Quant Research Overlay</h2><div class="empty">No quant research context for this run.</div></div>';
+            }
+            const ev = research.ev_score || {};
+            const risk = research.risk_metrics || {};
+            const macro = research.macro_compare || {};
+            const capital = research.capital_scenarios || {};
+            const backtest = Object.keys(research.monthly_backtest || {}).length ? (research.monthly_backtest || {}) : (backtestFallback || {});
+            const macroRows = Array.isArray(macro.rows) ? macro.rows : [];
+            const scenarioSignals = capital.signals || {};
+            const planRows = Array.isArray(capital.forward_plan_6m) ? capital.forward_plan_6m : [];
+            const btError = (backtest.error || '').trim();
+            const btWindow = backtest.window || {};
+            return `
+                <div class="section">
+                    <h2>Quant Research Overlay</h2>
+                    <div class="kv">
+                        <span>Generated</span><span>${escapeHtml(research.generated_at_bj || '-')}</span>
+                        <span>Symbol</span><span>${escapeHtml(research.symbol || '-')}</span>
+                        <span>Status</span><span>${escapeHtml(research.error ? `error: ${research.error}` : 'ok')}</span>
+                    </div>
+                    <div style="margin-top:12px;">
+                        ${renderMetricPairs('Heuristic EV Calibration', {
+                            'Heuristic Confidence (%)': ev.confidence_level_pct,
+                            'Local Range EV (%)': ev.expected_value_pct,
+                            'Upside Potential (%)': ev.upside_potential_pct,
+                            'Downside Risk (%)': ev.downside_risk_pct,
+                        })}
+                        ${renderMetricPairs('Risk Metrics', {
+                            'ROI 30d (%)': risk.roi_30d_pct,
+                            'Annualized Vol (%)': risk.vol_annual_pct,
+                            'Max Drawdown (%)': risk.max_drawdown_pct,
+                            'Dist to SMA50 (%)': risk.distance_to_sma50_pct,
+                            'Dist to SMA200 (%)': risk.distance_to_sma200_pct,
+                            'ZScore 50': risk.zscore_50,
+                            'RSI14': (risk.rsi14 ?? risk.rsi),
+                        })}
+                        <div class="market-block">
+                            <h3>Macro Compare</h3>
+                            <div class="kv">
+                                <span>Universe</span><span>${escapeHtml((macro.universe || []).join(', ') || '-')}</span>
+                                <span>Heuristic Confidence Leaders</span><span>${escapeHtml(((macro.leaders || {}).confidence_top || []).join(', ') || '-')}</span>
+                                <span>Local Range EV Leaders</span><span>${escapeHtml(((macro.leaders || {}).expected_value_top || []).join(', ') || '-')}</span>
+                            </div>
+                            <div style="margin-top:10px;">
+                                ${renderTable(
+                                    [
+                                        { key: 'symbol', label: 'Symbol' },
+                                        { key: 'close', label: 'Close' },
+                                        { key: 'confidence_level_pct', label: 'Heuristic Confidence %' },
+                                        { key: 'expected_value_pct', label: 'Local Range EV %' },
+                                        { key: 'roi_30d_pct', label: 'ROI30d %' },
+                                        { key: 'vol_annual_pct', label: 'Vol Ann %' },
+                                        { key: 'rsi14', label: 'RSI14' },
+                                        { key: 'error', label: 'Error', wide: true },
+                                    ],
+                                    macroRows.map(row => ({ ...row, rsi14: row.rsi14 ?? row.rsi })),
+                                )}
+                            </div>
+                        </div>
+                        <div class="market-block">
+                            <h3>Capital Scenarios (VA / DCA / REBALANCE)</h3>
+                            ${renderTable(
+                                [
+                                    { key: 'strategy', label: 'Strategy' },
+                                    { key: 'scenario_status', label: 'Scenario Status' },
+                                    { key: 'notional_gap', label: 'Notional Gap' },
+                                    { key: 'target_value', label: 'Target Value' },
+                                    { key: 'current_value', label: 'Current Value' },
+                                ],
+                                ['va', 'dca', 'rebalance'].map(key => {
+                                    const row = scenarioSignals[key] || {};
+                                    return {
+                                        strategy: String(key).toUpperCase(),
+                                        scenario_status: row.scenario_status,
+                                        notional_gap: row.notional_gap,
+                                        target_value: row.target_value,
+                                        current_value: row.current_value,
+                                    };
+                                }),
+                            )}
+                            <div style="margin-top:10px;">
+                                ${renderTable(
+                                    [
+                                        { key: 'month', label: 'Month' },
+                                        { key: 'va_target_value', label: 'VA Target Value' },
+                                        { key: 'dca_amount', label: 'DCA Amount' },
+                                        { key: 'rebalance_target_weight', label: 'Rebalance Weight' },
+                                    ],
+                                    planRows,
+                                )}
+                            </div>
+                        </div>
+                        <div class="market-block">
+                            <h3>Monthly Backtest</h3>
+                            ${btError ? `<div class="empty">${escapeHtml(btError)}</div>` : `
+                                <div class="kv">
+                                    <span>Window</span><span>${escapeHtml((btWindow.from || '-') + ' -> ' + (btWindow.to || '-'))}</span>
+                                    <span>Months</span><span>${escapeHtml(formatScalar(btWindow.months))}</span>
+                                    <span>Best Strategy</span><span>${escapeHtml(backtest.best_strategy_by_final_value || '-')}</span>
+                                </div>
+                                <div style="margin-top:10px;">
+                                    ${renderBacktestMetricsTable(backtest.metrics || {})}
+                                </div>
+                                <div style="margin-top:10px;">
+                                    ${renderTable(
+                                        [
+                                            { key: 'date', label: 'Date' },
+                                            { key: 'VA', label: 'VA' },
+                                            { key: 'DCA', label: 'DCA' },
+                                            { key: 'REBALANCE', label: 'REBALANCE' },
+                                        ],
+                                        Array.isArray(backtest.equity_tail) ? backtest.equity_tail : [],
+                                    )}
+                                </div>
+                            `}
+                        </div>
+                    </div>
+                </div>
+            `;
+        }
+
+        function stagePillClass(stage) {
+            if (stage === 'live') return 'good';
+            if (stage === 'secondgate') return 'warn';
+            if (stage === 'firstgate') return 'muted';
+            return 'muted';
+        }
+
+        async function fetchJson(url, options = {}) {
+            const fetchOptions = { cache: 'no-store', ...options };
+            const method = String(fetchOptions.method || 'GET').toUpperCase();
+            const fetchUrl = method === 'GET'
+                ? `${url}${url.includes('?') ? '&' : '?'}_ts=${Date.now()}`
+                : url;
+            const res = await fetch(fetchUrl, fetchOptions);
+            const data = await res.json();
+            if (!res.ok) throw new Error(data.error || `HTTP ${res.status}`);
+            return data;
+        }
+
+        function scrollChatToBottom() {
+            const messages = document.getElementById('messages');
+            if (messages) messages.scrollTop = messages.scrollHeight;
+        }
+
+        async function streamChatReply(message, assistantDraft) {
+            const res = await fetch(`/api/runs/${encodeURIComponent(state.currentRunId)}/chat/stream`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ message }),
+            });
+            if (!res.ok) {
+                let errorText = `HTTP ${res.status}`;
+                try {
+                    const data = await res.json();
+                    errorText = data.error || errorText;
+                } catch (error) {
+                    console.error(error);
+                }
+                throw new Error(errorText);
+            }
+            if (!res.body) throw new Error('Streaming response body is unavailable.');
+
+            const reader = res.body.getReader();
+            const decoder = new TextDecoder();
+            let buffer = '';
+
+            const applyLine = (line) => {
+                if (!line.trim()) return;
+                const event = JSON.parse(line);
+                if (event.type === 'chunk') {
+                    assistantDraft.content += event.delta || '';
+                    renderChat();
+                    scrollChatToBottom();
+                    return;
+                }
+                if (event.type === 'replace') {
+                    assistantDraft.content = event.content || '';
+                    renderChat();
+                    scrollChatToBottom();
+                    return;
+                }
+                if (event.type === 'done') {
+                    state.chatMessages = Array.isArray(event.messages) ? event.messages : state.chatMessages;
+                    renderChat();
+                    scrollChatToBottom();
+                    return;
+                }
+                if (event.type === 'error') {
+                    if (event.partial) {
+                        assistantDraft.content = event.partial;
+                        renderChat();
+                        scrollChatToBottom();
+                    }
+                    throw new Error(event.error || 'Streaming chat failed.');
+                }
+            };
+
+            while (true) {
+                const { value, done } = await reader.read();
+                buffer += decoder.decode(value || new Uint8Array(), { stream: !done });
+                let newlineIndex = buffer.indexOf('\n');
+                while (newlineIndex >= 0) {
+                    const line = buffer.slice(0, newlineIndex);
+                    buffer = buffer.slice(newlineIndex + 1);
+                    applyLine(line);
+                    newlineIndex = buffer.indexOf('\n');
+                }
+                if (done) break;
+            }
+
+            if (buffer.trim()) applyLine(buffer);
+        }
+
+        async function loadRuns() {
+            const data = await fetchJson('/api/runs');
+            state.runs = Array.isArray(data.runs) ? data.runs : [];
+            renderRunList();
+            if (!state.currentRunId && state.runs.length) {
+                await selectRun(state.runs[0].run_id);
+            }
+        }
+
+        async function loadStatus() {
+            const data = await fetchJson('/api/long-hunter/status');
+            state.longHunterStatus = data.state || {};
+            state.gateProgress = data.gate_progress || null;
+            renderSchedulePill();
+            if (state.activeTab === 'report') {
+                patchReportStatusPanel();
+            } else if (state.activeTab === 'gates') {
+                patchGatesProgressPanel();
+            }
+        }
+
+        async function loadGateStats() {
+            state.gateStatsLoading = true;
+            if (state.activeTab === 'stats') {
+                renderStats();
+            }
+            try {
+                state.gateStats = await fetchJson('/api/gate-stats');
+                state.gateStatsLoaded = true;
+            } finally {
+                state.gateStatsLoading = false;
+                if (state.activeTab === 'stats') {
+                    renderStats();
+                }
+            }
+        }
+
+        function renderSchedulePill() {
+            const scheduler = state.longHunterStatus || {};
+            const nextRunAt = scheduler.next_run_at_bj || 'not scheduled';
+            const lastTrigger = scheduler.last_run_trigger ? ` | last ${scheduler.last_run_trigger}` : '';
+            const running = state.triggerInFlight ? ' | triggering...' : '';
+            schedulePill.textContent = `Next ${nextRunAt}${lastTrigger}${running}`;
+        }
+
+        function gateToneClass(status) {
+            if (status === 'completed') return 'good';
+            if (status === 'running') return 'warn';
+            if (status === 'aborted') return 'bad';
+            return 'muted';
+        }
+
+        function renderGateProgressCard(title, gate, options = {}) {
+            const data = gate || {};
+            const status = String(data.status || 'idle');
+            const tone = gateToneClass(status);
+            const pct = Number.isFinite(Number(data.progress_pct)) ? Math.max(0, Math.min(100, Number(data.progress_pct))) : 0;
+            const pctText = data.progress_pct_text || `${pct.toFixed(1)}%`;
+            const progressText = data.progress_text || '-';
+            const eta = data.eta_bj || '-';
+            const started = data.started_at_bj || '-';
+            const updated = data.last_update_bj || '-';
+            const nextRun = data.next_run_at_bj || '-';
+            const skippedItems = Number(data.skipped_items || 0);
+            const secondsUntilNext = Number(data.seconds_until_next);
+            const countdown = Number.isFinite(secondsUntilNext)
+                ? (secondsUntilNext >= 0 ? `${secondsUntilNext}s` : `overdue ${Math.abs(secondsUntilNext)}s`)
+                : '-';
+            return `
+                <div class="gate-card">
+                    <div class="gate-header">
+                        <div class="gate-title">${escapeHtml(title)}</div>
+                        <span class="pill ${escapeHtml(tone)}">${escapeHtml(data.status_label || status)}</span>
+                    </div>
+                    <div class="gate-progress-track">
+                        <div class="gate-progress-fill ${escapeHtml(tone)}" style="width:${escapeHtml(pct)}%;"></div>
+                    </div>
+                    <div class="muted">${escapeHtml(progressText)} · ${escapeHtml(pctText)}</div>
+                    <div class="gate-meta">
+                        <span>ETA</span><span>${escapeHtml(eta)}</span>
+                        <span>Started</span><span>${escapeHtml(started)}</span>
+                        <span>Last Update</span><span>${escapeHtml(updated)}</span>
+                        ${skippedItems > 0 ? `<span>Skipped Items</span><span>${escapeHtml(skippedItems)}</span>` : ''}
+                        ${options.showNextRun ? `<span>Next SecondGate</span><span>${escapeHtml(nextRun)} (${escapeHtml(countdown)})</span>` : ''}
+                        ${data.last_error ? `<span>Last Error</span><span>${escapeHtml(data.last_error)}</span>` : ''}
+                    </div>
+                </div>
+            `;
+        }
+
+        function gateSourceProgress(progress, source) {
+            const data = progress || {};
+            if (data[source] && typeof data[source] === 'object') {
+                return data[source];
+            }
+            if (source === 'news') {
+                return {
+                    firstgate: data.firstgate || {},
+                    secondgate: data.secondgate || {},
+                };
+            }
+            return {
+                firstgate: {},
+                secondgate: {},
+            };
+        }
+
+        function renderGateProgressSection(options = {}) {
+            const progress = state.gateProgress || {};
+            const title = options.title || 'Gate Progress';
+            const updatedAt = progress.updated_at_bj || '-';
+            const news = gateSourceProgress(progress, 'news');
+            const polymarket = gateSourceProgress(progress, 'polymarket');
+            return `
+                <div class="section">
+                    <h2>${escapeHtml(title)}</h2>
+                    <div class="muted">Updated at: ${escapeHtml(updatedAt)}</div>
+                    <div class="gate-progress-grid">
+                        ${renderGateProgressCard('News FirstGate', news.firstgate)}
+                        ${renderGateProgressCard('News SecondGate', news.secondgate, { showNextRun: true })}
+                        ${renderGateProgressCard('Polymarket FirstGate', polymarket.firstgate)}
+                        ${renderGateProgressCard('Polymarket SecondGate', polymarket.secondgate, { showNextRun: true })}
+                    </div>
+                </div>
+            `;
+        }
+
+        function formatRatio(value) {
+            return value === null || value === undefined || value === '' ? '-' : `${formatScalar(value)}x`;
+        }
+
+        function renderStatsBarList(distribution, label) {
+            const counts = distribution && distribution.counts ? distribution.counts : {};
+            const total = Number(distribution && distribution.total_scored || 0);
+            const rows = Array.from({ length: 10 }, (_, index) => {
+                const score = String(index + 1);
+                const count = Number(counts[score] || 0);
+                const pct = total > 0 ? (count / total) * 100 : 0;
+                return `
+                    <div class="stats-bar-row">
+                        <span>${escapeHtml(score)}</span>
+                        <div class="stats-bar-track">
+                            <div class="stats-bar-fill" style="width:${escapeHtml(pct.toFixed(1))}%;"></div>
+                        </div>
+                        <span>${escapeHtml(count)}</span>
+                    </div>
+                `;
+            }).join('');
+            return `
+                <div class="section">
+                    <h2>${escapeHtml(label)}</h2>
+                    <div class="stats-bar-list">${rows}</div>
+                    <div class="stats-mini">${escapeHtml(total)} scored items</div>
+                </div>
+            `;
+        }
+
+        function renderStageBreakdown(stageBreakdown) {
+            const rows = ['firstgate', 'secondgate', 'live'].map(stage => {
+                const item = stageBreakdown && stageBreakdown[stage] ? stageBreakdown[stage] : {};
+                const kept = Number(item.kept || 0);
+                const dropped = Number(item.dropped || 0);
+                const total = Number(item.total || 0);
+                const keepPct = total > 0 ? `${((kept / total) * 100).toFixed(1)}%` : '-';
+                return {
+                    stage,
+                    kept,
+                    dropped,
+                    total,
+                    keep_pct: keepPct,
+                };
+            });
+            return `
+                <div class="section">
+                    <h2>Stage Breakdown</h2>
+                    ${renderTable(
+                        [
+                            { key: 'stage', label: 'Stage' },
+                            { key: 'kept', label: 'Kept' },
+                            { key: 'dropped', label: 'Dropped' },
+                            { key: 'total', label: 'Total' },
+                            { key: 'keep_pct', label: 'Keep %' },
+                        ],
+                        rows,
+                    )}
+                </div>
+            `;
+        }
+
+        function renderStats() {
+            const page = pages.stats;
+            if (!state.gateStatsLoaded) {
+                page.innerHTML = state.gateStatsLoading
+                    ? '<div class="empty">Loading gate stats...</div>'
+                    : '<div class="empty">Open this tab to load gate stats.</div>';
+                return;
+            }
+            const sources = state.gateStats.sources || {};
+            const sourceKey = ['all', 'news', 'polymarket'].includes(state.activeStatsSource) ? state.activeStatsSource : 'all';
+            const sourceStats = sources[sourceKey] || {};
+            const lifecycle = sourceStats.lifecycle || {};
+            const updatedAt = state.gateStats.updated_at_bj || '-';
+            const sourceButtons = [
+                ['all', 'All Sources'],
+                ['news', 'News'],
+                ['polymarket', 'Polymarket'],
+            ].map(([key, label]) => `
+                <button class="stats-source-btn ${state.activeStatsSource === key ? 'active' : ''}" type="button" data-stats-source="${escapeHtml(key)}">${escapeHtml(label)}</button>
+            `).join('');
+            page.innerHTML = `
+                <div class="section">
+                    <h2>Gate Stats</h2>
+                    <div class="muted">Updated at: ${escapeHtml(updatedAt)}. This tab summarizes gate keep/drop behavior and score distribution from live pool plus gate history.</div>
+                </div>
+                <div class="stats-source-tabs">${sourceButtons}</div>
+                <div class="stats-grid">
+                    ${renderSignalStatCard('Active', Number(lifecycle.active || 0), Number(lifecycle.active || 0))}
+                    ${renderSignalStatCard('SecondGate Skipped', Number(lifecycle.secondgate_skipped || 0), Number(lifecycle.secondgate_skipped || 0))}
+                    ${renderSignalStatCard('Dropped Total', Number(lifecycle.dropped_total || 0), Number(lifecycle.dropped_total || 0))}
+                    ${renderSignalStatCard('SecondGate Dropped', Number(lifecycle.secondgate_dropped || 0), Number(lifecycle.secondgate_dropped || 0))}
+                    ${renderValueStatCard('Keep/Drop Ratio', formatRatio(lifecycle.keep_drop_ratio), 'active lifecycle / dropped lifecycle')}
+                </div>
+                <div class="stats-block-grid">
+                    ${renderStageBreakdown(sourceStats.stage_breakdown || {})}
+                    <div class="section">
+                        <h2>Snapshot Metrics</h2>
+                        ${renderTable(
+                            [
+                                { key: 'metric', label: 'Metric' },
+                                { key: 'value', label: 'Value' },
+                            ],
+                            [
+                                { metric: 'Record Count', value: sourceStats.record_count || 0 },
+                                { metric: 'Active Lifecycle', value: lifecycle.active || 0 },
+                                { metric: 'SecondGate Skipped', value: lifecycle.secondgate_skipped || 0 },
+                                { metric: 'FirstGate Dropped', value: lifecycle.firstgate_dropped || 0 },
+                                { metric: 'SecondGate Dropped', value: lifecycle.secondgate_dropped || 0 },
+                            ],
+                        )}
+                    </div>
+                </div>
+                <div class="stats-block-grid">
+                    ${renderStatsBarList((sourceStats.importance_distribution || {}).live_pool || {}, 'Importance Score Distribution · Live Pool')}
+                    ${renderStatsBarList((sourceStats.importance_distribution || {}).history || {}, 'Importance Score Distribution · Gate History')}
+                </div>
+            `;
+            Array.from(page.querySelectorAll('[data-stats-source]')).forEach(button => {
+                button.addEventListener('click', () => {
+                    state.activeStatsSource = button.dataset.statsSource || 'all';
+                    renderStats();
+                });
+            });
+        }
+
+        function renderRunList() {
+            const keyword = runSearch.value.trim().toLowerCase();
+            const rows = state.runs.filter(run => {
+                const haystack = [run.run_id, run.created_at_bj, run.narrative_preview, JSON.stringify(run.targets || [])].join(' ').toLowerCase();
+                return !keyword || haystack.includes(keyword);
+            });
+            if (!rows.length) {
+                runList.innerHTML = '<div class="empty">No long-hunter runs found.</div>';
+                return;
+            }
+            runList.innerHTML = rows.map(run => {
+                const active = run.run_id === state.currentRunId ? 'active' : '';
+                const target = (run.targets || [])[0] || {};
+                return `
+                    <div class="run-card ${active}" data-run-id="${escapeHtml(run.run_id)}">
+                        <div class="run-title">
+                            <span>${escapeHtml(run.created_at_bj || run.run_id)}</span>
+                            <span class="pill">${escapeHtml(run.validation_status || 'prediction')}</span>
+                        </div>
+                        <div class="run-price">$${escapeHtml(target.price_target ?? run.current_price ?? '-')}</div>
+                        <div class="run-title">
+                            <span>${escapeHtml(target.target_date || '-')} / ${escapeHtml(target.horizon_days || '-')}d</span>
+                            <span>${escapeHtml((run.directions || []).join(', ') || '-')}</span>
+                        </div>
+                        <div class="run-preview">${escapeHtml(run.narrative_preview || '')}</div>
+                    </div>
+                `;
+            }).join('');
+            Array.from(runList.querySelectorAll('.run-card')).forEach(card => {
+                card.addEventListener('click', () => selectRun(card.dataset.runId));
+            });
+        }
+
+        async function selectRun(runId) {
+            state.currentRunId = runId;
+            state.currentRun = await fetchJson(`/api/runs/${encodeURIComponent(runId)}`);
+            const chat = await fetchJson(`/api/runs/${encodeURIComponent(runId)}/chat`);
+            state.chatMessages = Array.isArray(chat.messages) ? chat.messages : [];
+            state.contextShowAll = false;
+            renderRunList();
+            renderActiveTab();
+            renderContext();
+        }
+
+        function setTab(tab) {
+            state.activeTab = tab;
+            tabButtons.forEach(btn => btn.classList.toggle('active', btn.dataset.tab === tab));
+            Object.entries(pages).forEach(([name, el]) => el.classList.toggle('active', name === tab));
+            renderActiveTab();
+            if (tab === 'signals' && !state.signalsLoaded) {
+                loadSignals().catch(error => {
+                    pages.signals.innerHTML = `<div class="empty">${escapeHtml(error.message)}</div>`;
+                });
+            }
+            if (tab === 'services' && !state.servicesLoaded) {
+                loadServices().catch(error => {
+                    pages.services.innerHTML = `<div class="empty">${escapeHtml(error.message)}</div>`;
+                });
+            }
+            if (tab === 'stats' && !state.gateStatsLoaded) {
+                loadGateStats().catch(error => {
+                    pages.stats.innerHTML = `<div class="empty">${escapeHtml(error.message)}</div>`;
+                });
+            }
+            syncServicesPolling();
+            syncStatusPolling();
+        }
+
+        function setContext(tab) {
+            state.activeContext = tab;
+            state.contextShowAll = false;
+            contextTabs.forEach(btn => btn.classList.toggle('active', btn.dataset.context === tab));
+            renderContext();
+        }
+
+        function renderActiveTab() {
+            renderSchedulePill();
+            if (state.activeTab === 'report') {
+                renderReport();
+                return;
+            }
+            if (state.activeTab === 'chat') {
+                renderChat();
+                return;
+            }
+            if (state.activeTab === 'signals') {
+                renderSignals();
+                return;
+            }
+            if (state.activeTab === 'stats') {
+                renderStats();
+                return;
+            }
+            if (state.activeTab === 'services') {
+                renderServices();
+                return;
+            }
+            renderGates();
+        }
+
+        function buildSchedulerSection() {
+            const scheduler = state.longHunterStatus || {};
+            return `
+                <div class="section">
+                    <h2>Scheduler</h2>
+                    <div class="kv">
+                        <span>Next Run</span><span>${escapeHtml(scheduler.next_run_at_bj || '-')}</span>
+                        <span>Last Run</span><span>${escapeHtml(scheduler.last_run_at_bj || '-')}</span>
+                        <span>Last Trigger</span><span>${escapeHtml(scheduler.last_run_trigger || '-')}</span>
+                        <span>Last Event</span><span>${escapeHtml(scheduler.last_run_event_type || '-')}</span>
+                        <span>Last Log Dir</span><span>${escapeHtml(scheduler.last_run_log_dir || '-')}</span>
+                    </div>
+                    <form class="manual-trigger-form" id="manual-trigger-form" style="margin-top:12px;">
+                        <textarea id="manual-trigger-input" placeholder="Optional manual context for the long-hunter run..."></textarea>
+                        <div class="action-row">
+                            <button class="primary" type="submit" ${state.triggerInFlight ? 'disabled' : ''}>${state.triggerInFlight ? 'Triggering...' : 'Trigger Long Hunter'}</button>
+                            <span class="muted">Manual trigger will shift the next automatic run to trigger time + 7 days.</span>
+                        </div>
+                    </form>
+                </div>
+                ${renderGateProgressSection({ title: 'Gate Progress' })}
+            `;
+        }
+
+        function patchReportStatusPanel() {
+            const root = document.getElementById('report-scheduler-root');
+            if (!root) {
+                renderReport();
+                return;
+            }
+            root.innerHTML = buildSchedulerSection();
+            bindManualTriggerForm();
+        }
+
+        function patchGatesProgressPanel() {
+            const root = document.getElementById('gates-progress-root');
+            if (!root) {
+                renderGates();
+                return;
+            }
+            root.innerHTML = renderGateProgressSection({ title: 'Gates' });
+        }
+
+        function renderReport() {
+            const page = pages.report;
+            const schedulerSection = `<div id="report-scheduler-root">${buildSchedulerSection()}</div>`;
+            const run = state.currentRun;
+            if (!run) {
+                page.innerHTML = `${schedulerSection}<div class="empty">Select a long-hunter run.</div>`;
+                bindManualTriggerForm();
+                return;
+            }
+            const prediction = run.prediction || {};
+            const context = run.context || {};
+            const forecasts = Array.isArray(prediction.forecasts) ? prediction.forecasts : [];
+            page.innerHTML = `
+                ${schedulerSection}
+                <div class="section">
+                    <h2>${escapeHtml(prediction.symbol || 'BTCUSDT')} Long Narrative</h2>
+                    <div class="kv">
+                        <span>Run</span><span>${escapeHtml(prediction.run_id || run.run_id)}</span>
+                        <span>Created</span><span>${escapeHtml(prediction.created_at_bj || '')}</span>
+                        <span>Current Price</span><span>$${escapeHtml(prediction.current_price ?? '-')}</span>
+                    </div>
+                    <div class="narrative" style="margin-top:12px;">${escapeHtml(prediction.narrative_report || 'No narrative report.')}</div>
+                </div>
+                <div class="section">
+                    <h2>Forecasts</h2>
+                    <div class="forecast-grid">
+                        ${forecasts.map(renderForecast).join('') || '<div class="empty">No forecasts recorded.</div>'}
+                    </div>
+                </div>
+                <div class="section">
+                    <h2>Prior Prediction Review</h2>
+                    <pre>${asJson(prediction.prior_prediction_review || [])}</pre>
+                </div>
+                <div class="section">
+                    <h2>Risk Notes</h2>
+                    <pre>${asJson(prediction.risk_notes || [])}</pre>
+                </div>
+                ${renderQuantResearchSection(context.quant_research || {}, context.backtest_metrics || {})}
+            `;
+            bindManualTriggerForm();
+        }
+
+        function bindManualTriggerForm() {
+            const form = document.getElementById('manual-trigger-form');
+            if (!form) return;
+            form.addEventListener('submit', async (event) => {
+                event.preventDefault();
+                if (state.triggerInFlight) return;
+                const input = document.getElementById('manual-trigger-input');
+                const message = input ? input.value.trim() : '';
+                state.triggerInFlight = true;
+                renderReport();
+                try {
+                    const data = await fetchJson('/api/long-hunter/trigger', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({ message }),
+                    });
+                    state.longHunterStatus = data.status || state.longHunterStatus;
+                    if (input) input.value = '';
+                    await loadRuns();
+                    await loadStatus();
+                    if (data.run_id) {
+                        await selectRun(data.run_id);
+                    } else {
+                        renderActiveTab();
+                        renderContext();
+                    }
+                } catch (error) {
+                    alert(error.message);
+                } finally {
+                    state.triggerInFlight = false;
+                    renderReport();
+                }
+            });
+        }
+
+        function renderForecast(item) {
+            return `
+                <div class="forecast">
+                    <div class="run-title">
+                        <span>${escapeHtml(item.target_date || '-')}</span>
+                        <span class="pill">${escapeHtml(item.direction || '-')}</span>
+                    </div>
+                    <strong>$${escapeHtml(item.price_target ?? '-')}</strong>
+                    <div class="kv">
+                        <span>Range</span><span>$${escapeHtml(item.price_low ?? '-')} - $${escapeHtml(item.price_high ?? '-')}</span>
+                        <span>Horizon</span><span>${escapeHtml(item.horizon_days ?? '-')} days</span>
+                        <span>Confidence</span><span>${escapeHtml(item.confidence ?? '-')}</span>
+                    </div>
+                    <p class="reason">${escapeHtml(item.thesis || '')}</p>
+                    <details>
+                        <summary>Drivers</summary>
+                        <pre>${asJson(item.drivers || [])}</pre>
+                    </details>
+                    <details>
+                        <summary>Invalidation</summary>
+                        <pre>${asJson(item.invalidation_conditions || [])}</pre>
+                    </details>
+                </div>
+            `;
+        }
+
+        function renderChat() {
+            const page = pages.chat;
+            if (!state.currentRunId) {
+                page.innerHTML = '<div class="empty">Select a run before chatting.</div>';
+                return;
+            }
+            page.innerHTML = `
+                <div class="chat">
+                    <div class="messages" id="messages">
+                        ${state.chatMessages.map(item => `<div class="msg ${escapeHtml(item.role)}">${escapeHtml(item.content)}</div>`).join('') || '<div class="empty">No chat messages yet.</div>'}
+                    </div>
+                    <form class="chat-form" id="chat-form">
+                        <textarea id="chat-input" placeholder="Ask a follow-up anchored to this run..." ${state.chatPending ? 'disabled' : ''}></textarea>
+                        <button class="primary" type="submit" ${state.chatPending ? 'disabled' : ''}>${state.chatPending ? 'Streaming...' : 'Send'}</button>
+                    </form>
+                </div>
+            `;
+            const form = document.getElementById('chat-form');
+            form.addEventListener('submit', async (event) => {
+                event.preventDefault();
+                if (state.chatPending) return;
+                const input = document.getElementById('chat-input');
+                const message = input.value.trim();
+                if (!message) return;
+                input.value = '';
+                state.chatMessages.push({ role: 'user', content: message });
+                const assistantDraft = { role: 'assistant', content: '' };
+                state.chatMessages.push(assistantDraft);
+                state.chatPending = true;
+                renderChat();
+                scrollChatToBottom();
+                try {
+                    await streamChatReply(message, assistantDraft);
+                } catch (error) {
+                    assistantDraft.content = assistantDraft.content || `[chat error] ${error.message}`;
+                    renderChat();
+                    scrollChatToBottom();
+                } finally {
+                    state.chatPending = false;
+                    renderChat();
+                    scrollChatToBottom();
+                }
+            });
+            scrollChatToBottom();
+        }
+
+        async function loadSignals(source = state.gatedSignalsSource, options = {}) {
+            const { resetPage = false } = options || {};
+            if (resetPage) {
+                state.gatedSignalsPageByBucket = {
+                    active: 1,
+                    secondgate_skipped: 1,
+                    secondgate_dropped: 1,
+                    firstgate_dropped: 1,
+                };
+            }
+            const requestSeq = state.signalRequestSeq + 1;
+            state.signalRequestSeq = requestSeq;
+            state.signalsLoading = true;
+            renderSignals();
+            const params = new URLSearchParams({
+                source,
+                search: state.gatedSignalsSearch,
+                page_size: String(state.gatedSignalsPageSize),
+                page_active: String(state.gatedSignalsPageByBucket.active || 1),
+                page_secondgate_skipped: String(state.gatedSignalsPageByBucket.secondgate_skipped || 1),
+                page_secondgate_dropped: String(state.gatedSignalsPageByBucket.secondgate_dropped || 1),
+                page_firstgate_dropped: String(state.gatedSignalsPageByBucket.firstgate_dropped || 1),
+            });
+            try {
+                const data = await fetchJson(`/api/gated-signals?${params.toString()}`);
+                if (requestSeq !== state.signalRequestSeq) return;
+                state.gatedSignalsBuckets = {
+                    active: Array.isArray(data?.buckets?.active) ? data.buckets.active : [],
+                    secondgate_skipped: Array.isArray(data?.buckets?.secondgate_skipped) ? data.buckets.secondgate_skipped : [],
+                    secondgate_dropped: Array.isArray(data?.buckets?.secondgate_dropped) ? data.buckets.secondgate_dropped : [],
+                    firstgate_dropped: Array.isArray(data?.buckets?.firstgate_dropped) ? data.buckets.firstgate_dropped : [],
+                };
+                state.gatedSignalsSummary = {
+                    active: Number(data?.summary?.active || 0),
+                    secondgate_skipped: Number(data?.summary?.secondgate_skipped || 0),
+                    secondgate_dropped: Number(data?.summary?.secondgate_dropped || 0),
+                    firstgate_dropped: Number(data?.summary?.firstgate_dropped || 0),
+                };
+                state.gatedSignalsTotalSummary = {
+                    active: Number(data?.total_summary?.active || 0),
+                    secondgate_skipped: Number(data?.total_summary?.secondgate_skipped || 0),
+                    secondgate_dropped: Number(data?.total_summary?.secondgate_dropped || 0),
+                    firstgate_dropped: Number(data?.total_summary?.firstgate_dropped || 0),
+                };
+                state.gatedSignalsPagination = {
+                    active: data?.pagination?.active || state.gatedSignalsPagination.active,
+                    secondgate_skipped: data?.pagination?.secondgate_skipped || state.gatedSignalsPagination.secondgate_skipped,
+                    secondgate_dropped: data?.pagination?.secondgate_dropped || state.gatedSignalsPagination.secondgate_dropped,
+                    firstgate_dropped: data?.pagination?.firstgate_dropped || state.gatedSignalsPagination.firstgate_dropped,
+                };
+                state.gatedSignalsPageByBucket = {
+                    active: Number(state.gatedSignalsPagination.active?.page || 1),
+                    secondgate_skipped: Number(state.gatedSignalsPagination.secondgate_skipped?.page || 1),
+                    secondgate_dropped: Number(state.gatedSignalsPagination.secondgate_dropped?.page || 1),
+                    firstgate_dropped: Number(state.gatedSignalsPagination.firstgate_dropped?.page || 1),
+                };
+                state.gatedSignalsCount = Number(data?.count || 0);
+                state.gatedSignalsTotalCount = Number(data?.total_count || data?.count || 0);
+                state.gatedSignalsSource = data?.source || source;
+                state.gatedSignalsPageSize = Number(data?.page_size || state.gatedSignalsPageSize || 20);
+                state.signalsLoaded = true;
+            } finally {
+                if (requestSeq === state.signalRequestSeq) {
+                    state.signalsLoading = false;
+                    renderSignals();
+                }
+            }
+        }
+
+        async function loadServices(lines = state.serviceLogLines) {
+            const normalizedLines = Math.max(20, Math.min(Number(lines) || 120, 300));
+            const params = new URLSearchParams({ lines: String(normalizedLines) });
+            const data = await fetchJson(`/api/services?${params.toString()}`);
+            state.services = Array.isArray(data.services) ? data.services : [];
+            state.servicesLoaded = true;
+            state.serviceLogLines = normalizedLines;
+            renderServices();
+        }
+
+        async function runServiceAction(name, action) {
+            const key = `${name}:${action}`;
+            if (state.serviceBusy[key]) return;
+            state.serviceBusy = { ...state.serviceBusy, [key]: true };
+            renderServices();
+            try {
+                const data = await fetchJson(`/api/services/${encodeURIComponent(name)}/action`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ action }),
+                });
+                if (data.service) {
+                    state.services = (state.services || []).map(item => item.name === data.service.name ? data.service : item);
+                }
+                if (!data.ok) {
+                    throw new Error(data.stderr || data.stdout || `${action} failed`);
+                }
+                await loadServices(state.serviceLogLines);
+            } catch (error) {
+                alert(error.message);
+                await loadServices(state.serviceLogLines).catch(() => {});
+            } finally {
+                state.serviceBusy = { ...state.serviceBusy, [key]: false };
+                renderServices();
+            }
+        }
+
+        function syncServicesPolling() {
+            if (state.activeTab === 'services') {
+                if (!servicesPollTimer) {
+                    servicesPollTimer = window.setInterval(() => {
+                        loadServices(state.serviceLogLines).catch(() => {});
+                    }, 5000);
+                }
+                return;
+            }
+            if (servicesPollTimer) {
+                window.clearInterval(servicesPollTimer);
+                servicesPollTimer = null;
+            }
+        }
+
+        function syncStatusPolling() {
+            if (!statusPollTimer) {
+                statusPollTimer = window.setInterval(() => {
+                    if (document.hidden) {
+                        return;
+                    }
+                    loadStatus().catch(() => {});
+                }, 5000);
+            }
+        }
+
+        function renderSignals() {
+            const page = pages.signals;
+            if (!state.signalsLoaded) {
+                if (state.signalsLoading) {
+                    page.innerHTML = '<div class="empty">Loading signal lifecycle data...</div>';
+                    return;
+                }
+                page.innerHTML = '<div class="empty">Open this tab to load signal lifecycle data.</div>';
+                return;
+            }
+            const hasSearch = state.gatedSignalsSearch.trim().length > 0;
+            const loadingBadge = state.signalsLoading ? ' · loading...' : '';
+            page.innerHTML = `
+                <div class="section">
+                    <div class="signal-toolbar">
+                        <div class="signal-filter-group">
+                            <select id="signal-source-select">
+                                <option value="all" ${state.gatedSignalsSource === 'all' ? 'selected' : ''}>All Sources</option>
+                                <option value="news" ${state.gatedSignalsSource === 'news' ? 'selected' : ''}>News</option>
+                                <option value="polymarket" ${state.gatedSignalsSource === 'polymarket' ? 'selected' : ''}>Polymarket</option>
+                            </select>
+                            <input id="signal-search-input" value="${escapeHtml(state.gatedSignalsSearch)}" placeholder="Search title / id / reason" />
+                            <select id="signal-page-size-select">
+                                <option value="10" ${state.gatedSignalsPageSize === 10 ? 'selected' : ''}>10 / page</option>
+                                <option value="20" ${state.gatedSignalsPageSize === 20 ? 'selected' : ''}>20 / page</option>
+                                <option value="40" ${state.gatedSignalsPageSize === 40 ? 'selected' : ''}>40 / page</option>
+                                <option value="80" ${state.gatedSignalsPageSize === 80 ? 'selected' : ''}>80 / page</option>
+                            </select>
+                            <span class="pager-status">${escapeHtml(state.gatedSignalsTotalCount)} unique signals${hasSearch ? ` · matched ${escapeHtml(state.gatedSignalsCount)}` : ''}${escapeHtml(loadingBadge)}</span>
+                        </div>
+                    </div>
+                    <div class="signal-overview">
+                        ${renderSignalStatCard('Active', state.gatedSignalsSummary.active, state.gatedSignalsTotalSummary.active)}
+                        ${renderSignalStatCard('SecondGate Skipped', state.gatedSignalsSummary.secondgate_skipped, state.gatedSignalsTotalSummary.secondgate_skipped)}
+                        ${renderSignalStatCard('Dropped by SecondGate', state.gatedSignalsSummary.secondgate_dropped, state.gatedSignalsTotalSummary.secondgate_dropped)}
+                        ${renderSignalStatCard('Dropped by FirstGate', state.gatedSignalsSummary.firstgate_dropped, state.gatedSignalsTotalSummary.firstgate_dropped)}
+                    </div>
+                    <div class="lifecycle-board">
+                        ${renderSignalLane('Currently Active', state.gatedSignalsBuckets.active || [], 'good', 'active')}
+                        ${renderSignalLane('Skipped by SecondGate', state.gatedSignalsBuckets.secondgate_skipped || [], 'muted', 'secondgate_skipped')}
+                        ${renderSignalLane('Killed by SecondGate', state.gatedSignalsBuckets.secondgate_dropped || [], 'warn', 'secondgate_dropped')}
+                        ${renderSignalLane('Killed by FirstGate', state.gatedSignalsBuckets.firstgate_dropped || [], 'bad', 'firstgate_dropped')}
+                    </div>
+                </div>
+            `;
+            bindSignalFilters();
+        }
+
+        function renderServices() {
+            const page = pages.services;
+            if (!state.servicesLoaded) {
+                page.innerHTML = '<div class="empty">Open this tab to load service status and logs.</div>';
+                return;
+            }
+            captureServiceLogScrollState();
+            page.innerHTML = `
+                <div class="section">
+                    <div class="service-toolbar">
+                        <div class="signal-filter-group">
+                            <label for="service-log-lines">Log lines</label>
+                            <select id="service-log-lines">
+                                <option value="60" ${state.serviceLogLines === 60 ? 'selected' : ''}>60</option>
+                                <option value="120" ${state.serviceLogLines === 120 ? 'selected' : ''}>120</option>
+                                <option value="200" ${state.serviceLogLines === 200 ? 'selected' : ''}>200</option>
+                                <option value="300" ${state.serviceLogLines === 300 ? 'selected' : ''}>300</option>
+                            </select>
+                            <span class="pager-status">${escapeHtml(state.services.length)} services · auto refresh 5s while this tab is open</span>
+                        </div>
+                    </div>
+                    <div class="service-grid">
+                        ${(state.services || []).map(renderServiceCard).join('') || '<div class="empty">No services found.</div>'}
+                    </div>
+                </div>
+            `;
+            bindServiceControls();
+            restoreServiceLogScrollState();
+        }
+
+        function renderGates() {
+            const page = pages.gates;
+            if (!state.gateProgress) {
+                page.innerHTML = '<div class="empty">Loading gate progress...</div>';
+                return;
+            }
+            page.innerHTML = `
+                <div id="gates-progress-root">${renderGateProgressSection({ title: 'Gates' })}</div>
+                <div class="section">
+                    <div class="muted">This tab tracks all four gate pipelines: news/polymarket × first/second gate. Status auto refreshes every 5s while this page is open.</div>
+                </div>
+            `;
+        }
+
+        function renderServiceCard(service) {
+            const tone = service.active_state === 'active' ? 'good' : (service.active_state === 'failed' ? 'bad' : 'warn');
+            return `
+                <div class="service-card">
+                    <div class="service-card-header">
+                        <div>
+                            <div class="service-card-title">${escapeHtml(service.name || '-')}</div>
+                            <div class="muted">${escapeHtml(service.description || service.unit || '-')}</div>
+                        </div>
+                        <div class="signal-meta">
+                            <span class="pill ${escapeHtml(tone)}">${escapeHtml(service.active_state || 'unknown')}</span>
+                            <span class="pill muted">${escapeHtml(service.sub_state || '-')}</span>
+                            <span class="pill muted">${escapeHtml(service.unit_file_state || '-')}</span>
+                        </div>
+                    </div>
+                    <div class="service-card-body">
+                        <div class="kv" style="margin-bottom:12px;">
+                            <span>Unit</span><span>${escapeHtml(service.unit || '-')}</span>
+                            <span>Load State</span><span>${escapeHtml(service.load_state || '-')}</span>
+                            <span>Main PID</span><span>${escapeHtml(service.main_pid || '-')}</span>
+                        </div>
+                        <div class="service-actions">
+                            ${renderServiceActionButton(service.name, 'start')}
+                            ${renderServiceActionButton(service.name, 'stop')}
+                            ${renderServiceActionButton(service.name, 'restart')}
+                        </div>
+                        <pre class="service-log" data-service-name="${escapeHtml(service.name || '')}">${escapeHtml(service.logs || 'No logs.')}</pre>
+                    </div>
+                </div>
+            `;
+        }
+
+        function renderServiceActionButton(name, action) {
+            const key = `${name}:${action}`;
+            const busy = Boolean(state.serviceBusy[key]);
+            const label = busy ? `${action}...` : action;
+            return `<button type="button" class="service-action-btn" data-service="${escapeHtml(name)}" data-action="${escapeHtml(action)}" ${busy ? 'disabled' : ''}>${escapeHtml(label)}</button>`;
+        }
+
+        function bindServiceControls() {
+            const lineSelect = document.getElementById('service-log-lines');
+            if (lineSelect) {
+                lineSelect.addEventListener('change', async () => {
+                    await loadServices(Number(lineSelect.value));
+                });
+            }
+            Array.from(document.querySelectorAll('.service-action-btn')).forEach(button => {
+                button.addEventListener('click', async () => {
+                    await runServiceAction(button.dataset.service, button.dataset.action);
+                });
+            });
+            Array.from(document.querySelectorAll('.service-log')).forEach(logEl => {
+                logEl.addEventListener('scroll', () => updateServiceLogScrollState(logEl));
+            });
+        }
+
+        function updateServiceLogScrollState(logEl) {
+            if (!logEl) return;
+            const serviceName = (logEl.dataset.serviceName || '').trim();
+            if (!serviceName) return;
+            const maxTop = Math.max(0, logEl.scrollHeight - logEl.clientHeight);
+            const nearBottom = maxTop <= 0 || logEl.scrollTop >= maxTop - 24;
+            state.serviceLogScroll = {
+                ...state.serviceLogScroll,
+                [serviceName]: {
+                    scrollTop: logEl.scrollTop,
+                    stickToBottom: nearBottom,
+                },
+            };
+        }
+
+        function captureServiceLogScrollState() {
+            Array.from(document.querySelectorAll('.service-log')).forEach(logEl => {
+                updateServiceLogScrollState(logEl);
+            });
+        }
+
+        function restoreServiceLogScrollState() {
+            Array.from(document.querySelectorAll('.service-log')).forEach(logEl => {
+                const serviceName = (logEl.dataset.serviceName || '').trim();
+                if (!serviceName) {
+                    logEl.scrollTop = logEl.scrollHeight;
+                    return;
+                }
+                const snapshot = state.serviceLogScroll[serviceName];
+                if (!snapshot) {
+                    logEl.scrollTop = logEl.scrollHeight;
+                    updateServiceLogScrollState(logEl);
+                    return;
+                }
+                if (snapshot.stickToBottom) {
+                    logEl.scrollTop = logEl.scrollHeight;
+                } else {
+                    const maxTop = Math.max(0, logEl.scrollHeight - logEl.clientHeight);
+                    logEl.scrollTop = Math.min(Math.max(0, snapshot.scrollTop || 0), maxTop);
+                }
+                updateServiceLogScrollState(logEl);
+            });
+        }
+
+        function bindSignalFilters() {
+            const sourceSelect = document.getElementById('signal-source-select');
+            if (sourceSelect) {
+                sourceSelect.addEventListener('change', async () => {
+                    state.gatedSignalsSource = sourceSelect.value;
+                    await loadSignals(state.gatedSignalsSource, { resetPage: true });
+                });
+            }
+            const searchInput = document.getElementById('signal-search-input');
+            if (searchInput) {
+                searchInput.addEventListener('input', () => {
+                    state.gatedSignalsSearch = searchInput.value;
+                    if (signalSearchTimer) {
+                        window.clearTimeout(signalSearchTimer);
+                    }
+                    signalSearchTimer = window.setTimeout(() => {
+                        loadSignals(state.gatedSignalsSource, { resetPage: true }).catch(error => {
+                            pages.signals.innerHTML = `<div class="empty">${escapeHtml(error.message)}</div>`;
+                        });
+                    }, 220);
+                });
+            }
+            const pageSizeSelect = document.getElementById('signal-page-size-select');
+            if (pageSizeSelect) {
+                pageSizeSelect.addEventListener('change', async () => {
+                    state.gatedSignalsPageSize = Number(pageSizeSelect.value) || 20;
+                    await loadSignals(state.gatedSignalsSource, { resetPage: true });
+                });
+            }
+            Array.from(document.querySelectorAll('[data-signal-page-bucket]')).forEach(button => {
+                button.addEventListener('click', async () => {
+                    const bucket = button.dataset.signalPageBucket;
+                    const direction = Number(button.dataset.signalPageDirection || 0);
+                    if (!bucket || !direction) return;
+                    const current = Number(state.gatedSignalsPageByBucket[bucket] || 1);
+                    state.gatedSignalsPageByBucket = {
+                        ...state.gatedSignalsPageByBucket,
+                        [bucket]: Math.max(1, current + direction),
+                    };
+                    await loadSignals(state.gatedSignalsSource);
+                });
+            });
+        }
+
+        function renderSignalStatCard(label, filteredCount, totalCount) {
+            return `
+                <div class="signal-stat">
+                    <div class="signal-stat-label">${escapeHtml(label)}</div>
+                    <div class="signal-stat-value">${escapeHtml(filteredCount)}</div>
+                    <div class="signal-stat-sub">${filteredCount === totalCount ? `${escapeHtml(totalCount)} total` : `${escapeHtml(filteredCount)} filtered / ${escapeHtml(totalCount)} total`}</div>
+                </div>
+            `;
+        }
+
+        function renderValueStatCard(label, value, subtext) {
+            return `
+                <div class="signal-stat">
+                    <div class="signal-stat-label">${escapeHtml(label)}</div>
+                    <div class="signal-stat-value">${escapeHtml(value)}</div>
+                    <div class="signal-stat-sub">${escapeHtml(subtext || '')}</div>
+                </div>
+            `;
+        }
+
+        function renderSignalLane(title, items, tone, bucketName) {
+            const pager = state.gatedSignalsPagination[bucketName] || {};
+            const total = Number(pager.total || 0);
+            const page = Number(pager.page || 1);
+            const totalPages = Number(pager.total_pages || 1);
+            const hasPrev = Boolean(pager.has_prev);
+            const hasNext = Boolean(pager.has_next);
+            return `
+                <div class="signal-lane">
+                    <div class="signal-lane-header">
+                        <div class="signal-lane-title">${escapeHtml(title)}</div>
+                        <span class="pill ${escapeHtml(tone)}">${escapeHtml(total)}</span>
+                    </div>
+                    <div class="signal-lane-body">
+                        ${items.length ? items.map(renderLifecycleSignalCard).join('') : '<div class="empty">No signals in this lane.</div>'}
+                    </div>
+                    <div class="pager" style="margin-top:10px;">
+                        <button type="button" data-signal-page-bucket="${escapeHtml(bucketName)}" data-signal-page-direction="-1" ${(!hasPrev || state.signalsLoading) ? 'disabled' : ''}>Prev</button>
+                        <span class="pager-status">Page ${escapeHtml(page)} / ${escapeHtml(totalPages)} · ${escapeHtml(total)} total</span>
+                        <button type="button" data-signal-page-bucket="${escapeHtml(bucketName)}" data-signal-page-direction="1" ${(!hasNext || state.signalsLoading) ? 'disabled' : ''}>Next</button>
+                    </div>
+                </div>
+            `;
+        }
+
+        function decisionMeta(stage) {
+            if (!stage) return { label: 'not_seen', tone: 'muted' };
+            if (stage.gate_stage === 'live') return { label: 'live', tone: 'good' };
+            if (stage.gate_decision === 'kept') return { label: 'kept', tone: 'good' };
+            if (stage.gate_decision === 'dropped') return { label: 'dropped', tone: stage.gate_stage === 'firstgate' ? 'bad' : 'warn' };
+            return { label: stage.gate_decision || 'unknown', tone: 'muted' };
+        }
+
+        function renderLifecycleStage(label, stage, emptyText) {
+            if (!stage) {
+                return `
+                    <div class="stage-item">
+                        <div class="stage-header">
+                            <div class="stage-title">${escapeHtml(label)}</div>
+                            <span class="pill muted">not_seen</span>
+                        </div>
+                        <div class="reason">${escapeHtml(emptyText)}</div>
+                    </div>
+                `;
+            }
+            const meta = decisionMeta(stage);
+            return `
+                <div class="stage-item">
+                    <div class="stage-header">
+                        <div class="stage-title">${escapeHtml(label)}</div>
+                        <span class="pill ${escapeHtml(meta.tone)}">${escapeHtml(meta.label)}</span>
+                    </div>
+                    <div class="stage-time">${escapeHtml(stage.recorded_at || '-')}</div>
+                    <div class="reason">${escapeHtml(stage.reason || 'No reason recorded.')}</div>
+                </div>
+            `;
+        }
+
+        function renderLifecycleTimelineEntry(entry) {
+            const meta = decisionMeta(entry);
+            return `
+                <div class="timeline-entry">
+                    <div class="timeline-meta">
+                        <span class="pill muted">${escapeHtml(entry.gate_stage || 'unknown')}</span>
+                        <span class="pill ${escapeHtml(meta.tone)}">${escapeHtml(meta.label)}</span>
+                        <span class="stage-time">${escapeHtml(entry.recorded_at || '-')}</span>
+                    </div>
+                    <div class="reason">${escapeHtml(entry.reason || 'No reason recorded.')}</div>
+                    <div class="timeline-file">${escapeHtml(entry.source_file || '')}</div>
+                    <details style="margin-top:8px;">
+                        <summary>Raw</summary>
+                        <pre>${asJson(entry.raw)}</pre>
+                    </details>
+                </div>
+            `;
+        }
+
+        function renderLifecycleSignalCard(item) {
+            const history = Array.isArray(item.history) ? item.history : [];
+            const bucketMeta = {
+                active: { label: 'active', tone: 'good' },
+                secondgate_skipped: { label: 'secondgate_skipped', tone: 'muted' },
+                secondgate_dropped: { label: 'secondgate_dropped', tone: 'warn' },
+                firstgate_dropped: { label: 'firstgate_dropped', tone: 'bad' },
+            }[item.bucket] || { label: item.bucket || 'unknown', tone: 'muted' };
+            return `
+                <div class="signal-card lifecycle-card">
+                    <div class="signal-title">${escapeHtml(item.title)}</div>
+                    <div class="signal-meta">
+                        <span class="pill">${escapeHtml(item.source_type)}</span>
+                        <span class="pill ${escapeHtml(bucketMeta.tone)}">${escapeHtml(bucketMeta.label)}</span>
+                        <span class="pill">score ${escapeHtml(item.importance_score || '-')}</span>
+                        <span class="pill">${escapeHtml(item.event_time || item.latest_recorded_at || '-')}</span>
+                    </div>
+                    <div class="reason">${escapeHtml(item.reason || 'No reason recorded.')}</div>
+                    <div class="stage-list">
+                        ${renderLifecycleStage('FirstGate', item.firstgate, 'This signal did not surface in firstgate history.')}
+                        ${renderLifecycleStage('SecondGate', item.secondgate, 'This signal never reached or never reappeared in secondgate logs.')}
+                        ${renderLifecycleStage('Live Pool', item.live, 'This signal is not currently present in gated.json.')}
+                    </div>
+                    <details style="margin-top:10px;">
+                        <summary>Lifecycle Timeline (${escapeHtml(history.length)})</summary>
+                        ${history.length ? history.map(renderLifecycleTimelineEntry).join('') : '<div class="empty">No lifecycle history.</div>'}
+                    </details>
+                </div>
+            `;
+        }
+
+        function renderSignalCard(item) {
+            return `
+                <div class="signal-card">
+                    <div class="signal-title">${escapeHtml(item.title)}</div>
+                    <div class="signal-meta">
+                        <span class="pill">${escapeHtml(item.source_type)}</span>
+                        ${item.gate_stage ? `<span class="pill ${stagePillClass(item.gate_stage)}">${escapeHtml(item.gate_stage)}</span>` : ''}
+                        <span class="pill">${escapeHtml(item.gate_decision || 'live')}</span>
+                        <span class="pill">score ${escapeHtml(item.importance_score || '-')}</span>
+                        <span class="pill">${escapeHtml(item.event_time || item.gated_at || '-')}</span>
+                    </div>
+                    <div class="reason">${escapeHtml(item.reason || 'No reason recorded.')}</div>
+                    <details style="margin-top:10px;">
+                        <summary>Raw</summary>
+                        <pre>${asJson(item.raw)}</pre>
+                    </details>
+                </div>
+            `;
+        }
+
+        function renderContext() {
+            const run = state.currentRun;
+            if (!run) {
+                contextBody.innerHTML = '<div class="empty">No run selected.</div>';
+                return;
+            }
+            const context = run.context || {};
+            if (state.activeContext === 'news') {
+                contextBody.innerHTML = renderContextSignals(context.news_gated || [], 'news');
+            } else if (state.activeContext === 'polymarket') {
+                contextBody.innerHTML = renderContextSignals(context.polymarket_gated || [], 'polymarket');
+            } else if (state.activeContext === 'whale') {
+                contextBody.innerHTML = renderWhaleContext(context);
+            } else if (state.activeContext === 'input') {
+                contextBody.innerHTML = `<pre>${escapeHtml(run.input_md || '')}</pre>`;
+            } else if (state.activeContext === 'market') {
+                contextBody.innerHTML = renderMarketContext(context.market_context || {});
+            } else if (state.activeContext === 'quant') {
+                contextBody.innerHTML = renderQuantResearchSection(context.quant_research || {}, context.backtest_metrics || {});
+            } else {
+                contextBody.innerHTML = `<pre>${asJson(run.prediction || {})}</pre>`;
+            }
+            bindContextControls();
+        }
+
+        function bindContextControls() {
+            const button = document.getElementById('context-show-all-btn');
+            if (!button) return;
+            button.addEventListener('click', () => {
+                state.contextShowAll = true;
+                renderContext();
+            });
+        }
+
+        function renderWhaleContext(context) {
+            const summaryText = String(context.whale_summary_md || '').trim();
+            const calls = Array.isArray(context.whale_summary_calls) ? context.whale_summary_calls : [];
+            const raw = context.whale_summary_raw || {};
+            const callCards = calls.length
+                ? calls.map((call, index) => `
+                    <div class="signal-card">
+                        <div class="signal-title">Call #${index + 1} · ${escapeHtml(call.date || '-')}</div>
+                        <div class="signal-meta">
+                            <span class="pill ${call.ok ? 'good' : 'bad'}">${escapeHtml(call.ok ? 'ok' : 'error')}</span>
+                            <span class="pill">status ${escapeHtml(call.status_code ?? '-')}</span>
+                            <span class="pill">${escapeHtml(call.ticker || 'BTC')}</span>
+                        </div>
+                        <div class="reason">${escapeHtml(call.error || 'No error')}</div>
+                        <details style="margin-top:10px;">
+                            <summary>Raw Call Record</summary>
+                            <pre>${asJson(call)}</pre>
+                        </details>
+                    </div>
+                `).join('')
+                : '<div class="empty">No whale API call records found in this run context.</div>';
+            return `
+                <div class="section">
+                    <h2>Whale Narrative Parse</h2>
+                    <pre>${escapeHtml(summaryText || 'No whale summary markdown captured for this run.')}</pre>
+                </div>
+                <div class="section">
+                    <h2>Whale API Call Records</h2>
+                    ${callCards}
+                </div>
+                <div class="section">
+                    <h2>Whale Raw JSON</h2>
+                    <pre>${asJson(raw)}</pre>
+                </div>
+            `;
+        }
+
+        function renderContextSignals(items, source) {
+            if (!Array.isArray(items) || !items.length) {
+                return `<div class="empty">No frozen ${escapeHtml(source)} context was captured for this run. The Signals tab may still show historical gate logs, but this run itself received an empty snapshot.</div>`;
+            }
+            const limit = 30;
+            const visibleItems = state.contextShowAll ? items : items.slice(0, limit);
+            const cards = visibleItems.map((item, index) => renderSignalCard({
+                source_type: source,
+                gate_stage: 'run_context',
+                gate_decision: item.gate_decision || 'run_context',
+                title: item.title || item.event_title || item.question || item.news_url || item.url || `${source}_${index}`,
+                importance_score: item.importance_score,
+                event_time: item.date || item.last_updated || item.gated_at,
+                reason: item.gate_reason || item.reason,
+                raw: item,
+            })).join('');
+            if (state.contextShowAll || items.length <= limit) {
+                return cards;
+            }
+            return `
+                <div class="section">
+                    <div class="muted">Showing ${escapeHtml(visibleItems.length)} / ${escapeHtml(items.length)} ${escapeHtml(source)} items to keep the context pane responsive.</div>
+                    <div style="margin-top:10px;">
+                        <button id="context-show-all-btn" type="button">Show All</button>
+                    </div>
+                </div>
+                ${cards}
+            `;
+        }
+
+        tabButtons.forEach(btn => btn.addEventListener('click', () => setTab(btn.dataset.tab)));
+        contextTabs.forEach(btn => btn.addEventListener('click', () => setContext(btn.dataset.context)));
+        runSearch.addEventListener('input', renderRunList);
+        refreshBtn.addEventListener('click', async () => {
+            await loadStatus();
+            await loadRuns();
+            if (state.signalsLoaded || state.activeTab === 'signals') {
+                await loadSignals(state.gatedSignalsSource);
+            }
+            if (state.gateStatsLoaded || state.activeTab === 'stats') {
+                await loadGateStats();
+            }
+            if (state.servicesLoaded || state.activeTab === 'services') {
+                await loadServices(state.serviceLogLines);
+            }
+            renderActiveTab();
+            renderContext();
+        });
+
+        (async function init() {
+            try {
+                await loadStatus();
+                await loadRuns();
+                renderActiveTab();
+                renderContext();
+                syncStatusPolling();
+            } catch (error) {
+                runList.innerHTML = `<div class="empty">${escapeHtml(error.message)}</div>`;
+            }
+        })();
+    </script>
+</body>
+</html>
