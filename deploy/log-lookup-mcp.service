@@ -1,0 +1,14 @@
+[Unit]
+Description=Log Lookup MCP Server (SSE)
+After=network.target
+
+[Service]
+Type=simple
+User=root
+WorkingDirectory=/home/coinautomation
+ExecStart=/usr/bin/python3 /home/coinautomation/log_lookup_mcp.py --transport sse --host 127.0.0.1 --port 18123
+Restart=always
+RestartSec=2
+
+[Install]
+WantedBy=multi-user.target

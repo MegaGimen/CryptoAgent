@@ -1,0 +1,1794 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>CoinAutomation Backtest Report</title>
+    <script src="https://unpkg.com/lightweight-charts@4.1.1/dist/lightweight-charts.standalone.production.js"></script>
+    <style>
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+            background-color: #131722;
+            color: #d1d4dc;
+            margin: 0;
+            padding: 20px;
+        }
+        #chart-container {
+            width: 100%;
+            height: 600px;
+            position: relative;
+            touch-action: none;
+        }
+        .stats-container {
+            display: flex;
+            gap: 20px;
+            margin-bottom: 20px;
+            background: #1e222d;
+            padding: 15px;
+            border-radius: 8px;
+        }
+        .stat-item {
+            flex: 1;
+            text-align: center;
+        }
+        .stat-value {
+            font-size: 24px;
+            font-weight: bold;
+            color: #2962ff;
+        }
+        .stat-label {
+            font-size: 12px;
+            color: #787b86;
+            text-transform: uppercase;
+        }
+        #modal {
+            display: none;
+            position: fixed;
+            z-index: 1000;
+            left: 0;
+            top: 0;
+            width: 100%;
+            height: 100%;
+            background-color: rgba(0,0,0,0.8);
+        }
+        .modal-content {
+            background-color: #1e222d;
+            margin: 5% auto;
+            padding: 20px;
+            border-radius: 8px;
+            width: 80%;
+            max-height: 80vh;
+            overflow-y: auto;
+            position: relative;
+        }
+        .close {
+            position: absolute;
+            right: 20px;
+            top: 10px;
+            color: #787b86;
+            font-size: 28px;
+            font-weight: bold;
+            cursor: pointer;
+        }
+        .log-section {
+            margin-bottom: 10px;
+            border-bottom: 1px solid #2a2e39;
+            padding-bottom: 5px;
+        }
+        summary {
+            color: #2962ff;
+            font-weight: bold;
+            cursor: pointer;
+            padding: 5px 0;
+            outline: none;
+            user-select: none;
+        }
+        summary:hover {
+            color: #448aff;
+        }
+        details {
+            margin-bottom: 10px;
+        }
+        .event-container {
+            border: 1px solid #363c4e;
+            border-radius: 4px;
+            padding: 10px;
+            margin-bottom: 15px;
+            background: #131722;
+        }
+        .event-header {
+            font-size: 16px;
+            font-weight: bold;
+            color: #d1d4dc;
+            margin-bottom: 10px;
+            display: flex;
+            justify-content: space-between;
+        }
+        .log-body {
+            white-space: pre-wrap;
+            font-size: 14px;
+            line-height: 1.6;
+            padding: 5px 0 10px 15px;
+            color: #b2b5be;
+        }
+        #loading {
+            position: fixed;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            background: rgba(30, 34, 45, 0.9);
+            padding: 20px 40px;
+            border-radius: 8px;
+            z-index: 2000;
+            display: none;
+            border: 1px solid #2962ff;
+        }
+        .trade-box {
+            position: absolute;
+            width: 20px;
+            height: 20px;
+            border-radius: 4px;
+            text-align: center;
+            line-height: 20px;
+            font-size: 12px;
+            font-weight: bold;
+            color: white;
+            cursor: pointer;
+            z-index: 100;
+        }
+        .range-zone {
+            position: absolute;
+            background: rgba(255, 152, 0, 0.22);
+            border-top: 2px solid rgba(255, 152, 0, 0.95);
+            border-bottom: 2px solid rgba(255, 152, 0, 0.95);
+            pointer-events: none;
+            z-index: 120;
+        }
+        .range-order-line {
+            position: absolute;
+            height: 0;
+            pointer-events: none;
+            z-index: 130;
+            border-top-width: 2px;
+            border-top-style: solid;
+        }
+        .range-order-line.long {
+            border-top-color: rgba(38, 166, 154, 0.95);
+        }
+        .range-order-line.short {
+            border-top-color: rgba(239, 83, 80, 0.95);
+        }
+        .range-order-line.exit {
+            border-top-style: dashed;
+            opacity: 0.8;
+        }
+        .range-order-label {
+            position: absolute;
+            transform: translateY(-50%);
+            font-size: 10px;
+            padding: 1px 4px;
+            border-radius: 3px;
+            color: #fff;
+            pointer-events: none;
+            z-index: 131;
+            white-space: nowrap;
+        }
+        .range-order-label.long {
+            background: rgba(38, 166, 154, 0.88);
+        }
+        .range-order-label.short {
+            background: rgba(239, 83, 80, 0.88);
+        }
+        .trade-buy { background-color: #26a69a; } /* 绿色 - 做多 */
+         .trade-sell { background-color: #ef5350; } /* 红色 - 做空 */
+         .trade-oco { background-color: #ff9800; } /* 橙色 - 保护 */
+         .trade-close { background-color: #9c27b0; } /* 紫色 - 平仓 */
+         .trade-filled { background-color: #00bcd4; } /* 青色 - 成交 */
+         .trade-neutral { background-color: #787b86; }
+         .tag-pill {
+            display: inline-block;
+            padding: 2px 6px;
+            border-radius: 4px;
+            font-size: 11px;
+            font-weight: bold;
+            color: white;
+            margin-left: 5px;
+            vertical-align: middle;
+         }
+         .legend-container {
+            display: flex;
+            gap: 15px;
+            margin-bottom: 15px;
+            background: #1e222d;
+            padding: 10px 15px;
+            border-radius: 8px;
+            font-size: 13px;
+            align-items: center;
+         }
+         .legend-item {
+            display: flex;
+            align-items: center;
+            gap: 5px;
+         }
+         .legend-box {
+            width: 16px;
+            height: 16px;
+            border-radius: 3px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 10px;
+            font-weight: bold;
+            color: white;
+         }
+         #floating-legend {
+            position: absolute;
+            left: 10px;
+            top: 10px;
+            z-index: 200;
+            background: rgba(30, 34, 45, 0.7);
+            padding: 10px;
+            border-radius: 4px;
+            font-size: 12px;
+            color: #d1d4dc;
+            pointer-events: none;
+            display: flex;
+            flex-direction: column;
+            gap: 5px;
+            border: 1px solid #363c4e;
+         }
+         .legend-row {
+            display: flex;
+            gap: 10px;
+            flex-wrap: wrap;
+         }
+         .legend-val {
+            font-weight: bold;
+         }
+         .freq-section {
+            margin-top: 20px;
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(320px, 1fr));
+            gap: 16px;
+         }
+         .freq-card {
+            background: #1e222d;
+            border: 1px solid #2a2e39;
+            border-radius: 8px;
+            padding: 14px;
+         }
+         .freq-title {
+            font-size: 15px;
+            font-weight: 700;
+            color: #d1d4dc;
+            margin-bottom: 10px;
+         }
+         .freq-empty {
+            color: #787b86;
+            font-size: 13px;
+            padding: 8px 0;
+         }
+         .freq-chart-wrap {
+            display: grid;
+            grid-template-columns: 42px 1fr;
+            gap: 8px;
+            align-items: stretch;
+         }
+         .freq-y-axis {
+            display: flex;
+            flex-direction: column;
+            justify-content: space-between;
+            align-items: flex-end;
+            color: #787b86;
+            font-size: 11px;
+            padding-right: 4px;
+         }
+         .freq-plot-scroll {
+            overflow-x: auto;
+            overflow-y: hidden;
+            padding-bottom: 6px;
+         }
+         .freq-plot {
+            min-height: 220px;
+            min-width: 100%;
+            border-left: 1px solid #2a2e39;
+            border-bottom: 1px solid #2a2e39;
+            display: flex;
+            align-items: flex-end;
+            gap: 10px;
+            padding: 8px 8px 0 10px;
+         }
+         .freq-col {
+            width: 40px;
+            min-width: 40px;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+         }
+         .freq-col-value {
+            color: #d1d4dc;
+            font-size: 11px;
+            margin-bottom: 4px;
+            line-height: 1;
+         }
+         .freq-col-bar-wrap {
+            height: 160px;
+            width: 24px;
+            background: #131722;
+            border: 1px solid #2a2e39;
+            border-radius: 4px;
+            display: flex;
+            align-items: flex-end;
+            overflow: hidden;
+         }
+         .freq-col-bar {
+            width: 100%;
+            background: linear-gradient(180deg, #00bcd4 0%, #2962ff 100%);
+         }
+         .freq-col-label {
+            margin-top: 6px;
+            color: #b2b5be;
+            font-size: 10px;
+            width: 52px;
+            text-align: center;
+            white-space: normal;
+            line-height: 1.2;
+            word-break: break-word;
+         }
+         .page-tabs {
+            display: flex;
+            gap: 10px;
+            margin-bottom: 16px;
+         }
+         .tab-btn {
+            background: #1e222d;
+            color: #b2b5be;
+            border: 1px solid #363c4e;
+            border-radius: 999px;
+            padding: 8px 14px;
+            cursor: pointer;
+            font-weight: 600;
+         }
+         .tab-btn.active {
+            background: #2962ff;
+            color: #ffffff;
+            border-color: #2962ff;
+         }
+         .page-section {
+            display: none;
+         }
+         .page-section.active {
+            display: block;
+         }
+         .news-toolbar {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 12px;
+            background: #1e222d;
+            border: 1px solid #2a2e39;
+            border-radius: 8px;
+            padding: 14px;
+            margin-bottom: 16px;
+         }
+         .news-filter {
+            display: flex;
+            flex-direction: column;
+            gap: 6px;
+            min-width: 180px;
+         }
+         .news-filter label {
+            color: #787b86;
+            font-size: 12px;
+            text-transform: uppercase;
+            font-weight: 700;
+         }
+         .news-filter select,
+         .news-filter input {
+            background: #131722;
+            color: #d1d4dc;
+            border: 1px solid #363c4e;
+            border-radius: 6px;
+            padding: 8px 10px;
+         }
+         .news-summary {
+            margin-left: auto;
+            align-self: flex-end;
+            color: #b2b5be;
+            font-size: 13px;
+         }
+         .news-list {
+            display: flex;
+            flex-direction: column;
+            gap: 12px;
+         }
+         .news-empty {
+            background: #1e222d;
+            border: 1px solid #2a2e39;
+            border-radius: 8px;
+            padding: 18px;
+            color: #787b86;
+         }
+         .news-record {
+            background: #1e222d;
+            border: 1px solid #2a2e39;
+            border-radius: 8px;
+            padding: 12px 14px;
+         }
+         .news-record summary {
+            display: flex;
+            justify-content: space-between;
+            gap: 12px;
+            align-items: flex-start;
+            list-style: none;
+         }
+         .news-record summary::-webkit-details-marker {
+            display: none;
+         }
+         .news-main {
+            display: flex;
+            flex-direction: column;
+            gap: 8px;
+            flex: 1;
+         }
+         .news-meta {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 8px;
+            color: #787b86;
+            font-size: 12px;
+         }
+         .news-headline {
+            color: #d1d4dc;
+            font-size: 15px;
+            line-height: 1.4;
+         }
+         .news-why {
+            color: #b2b5be;
+            font-size: 13px;
+            line-height: 1.5;
+         }
+         .pill {
+            display: inline-flex;
+            align-items: center;
+            border-radius: 999px;
+            padding: 3px 8px;
+            font-size: 11px;
+            font-weight: 700;
+         }
+         .pill-kept {
+            background: rgba(38, 166, 154, 0.18);
+            color: #54d2c6;
+         }
+         .pill-dropped {
+            background: rgba(239, 83, 80, 0.16);
+            color: #ff8a80;
+         }
+         .pill-neutral {
+            background: rgba(120, 123, 134, 0.22);
+            color: #d1d4dc;
+         }
+         .news-detail-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+            gap: 10px;
+            margin-top: 12px;
+         }
+         .news-detail-card {
+            background: #131722;
+            border: 1px solid #2a2e39;
+            border-radius: 6px;
+            padding: 10px;
+         }
+         .news-detail-card h4 {
+            margin: 0 0 8px 0;
+            color: #787b86;
+            font-size: 12px;
+            text-transform: uppercase;
+         }
+         .news-detail-card pre {
+            margin: 0;
+            white-space: pre-wrap;
+            word-break: break-word;
+            color: #d1d4dc;
+            font-size: 12px;
+         }
+    </style>
+</head>
+<body>
+    <div id="loading">Loading Market Data...</div>
+    <h1>CoinAutomation Report</h1>
+    
+    <div style="margin-bottom: 15px; display: flex; align-items: center; gap: 10px;">
+        <label for="interval-select" style="color: #d1d4dc; font-weight: bold;">Interval:</label>
+        <select id="interval-select" style="background: #1e222d; color: #d1d4dc; border: 1px solid #363c4e; padding: 5px 10px; border-radius: 4px; cursor: pointer;">
+            <option value="15m">15 Minutes</option>
+            <option value="1h" selected>1 Hour</option>
+            <option value="4h">4 Hours</option>
+            <option value="1d">1 Day</option>
+        </select>
+    </div>
+
+    <div class="page-tabs">
+        <button class="tab-btn active" data-tab="chart">Chart</button>
+        <button class="tab-btn" data-tab="news">News Gated</button>
+    </div>
+
+    <div id="tab-chart" class="page-section active">
+        <div class="stats-container" id="stats">
+            <div class="stat-item">
+                <div class="stat-value" id="stat-activations">-</div>
+                <div class="stat-label">Activations</div>
+            </div>
+            <div class="stat-item">
+                <div class="stat-value" id="stat-trades">-</div>
+                <div class="stat-label">Total Trades</div>
+            </div>
+            <div class="stat-item">
+                <div class="stat-value" id="stat-buys" style="color: #26a69a;">-</div>
+                <div class="stat-label">Buy Orders</div>
+            </div>
+            <div class="stat-item">
+                <div class="stat-value" id="stat-sells" style="color: #ef5350;">-</div>
+                <div class="stat-label">Sell Orders</div>
+            </div>
+        </div>
+
+        <div class="legend-container">
+            <span style="color: #787b86; margin-right: 5px; font-weight: bold;">LEGEND:</span>
+            <div class="legend-item">
+                <div class="legend-box trade-buy">B</div>
+                <span>Buy / Long Entry</span>
+            </div>
+            <div class="legend-item">
+                <div class="legend-box trade-sell">S</div>
+                <span>Sell / Short Entry</span>
+            </div>
+            <div class="legend-item">
+                <div class="legend-box trade-close">C</div>
+                <span>Close Position</span>
+            </div>
+            <div class="legend-item">
+                <div class="legend-box trade-oco">O</div>
+                <span>OCO / Protection Order</span>
+            </div>
+            <div class="legend-item">
+                <div class="legend-box trade-neutral">N</div>
+                <span>Observation / Neutral</span>
+            </div>
+        </div>
+
+        <div id="chart-container">
+            <div id="floating-legend">
+                <div class="legend-row" id="legend-price">
+                    <span style="color: #d1d4dc;">O: <span class="legend-val">-</span></span>
+                    <span style="color: #d1d4dc;">H: <span class="legend-val">-</span></span>
+                    <span style="color: #d1d4dc;">L: <span class="legend-val">-</span></span>
+                    <span style="color: #d1d4dc;">C: <span class="legend-val">-</span></span>
+                </div>
+                <div class="legend-row" id="legend-ma">
+                    <span style="color: #00d8ff;">MA7: <span class="legend-val">-</span></span>
+                    <span style="color: #ffd600;">MA25: <span class="legend-val">-</span></span>
+                    <span style="color: #ffffff;">MA99: <span class="legend-val">-</span></span>
+                </div>
+                <div class="legend-row" id="legend-oco">
+                    <span style="color: #00ff00;">TP: <span class="legend-val">-</span></span>
+                    <span style="color: #ff0000;">SL: <span class="legend-val">-</span></span>
+                </div>
+                <div class="legend-row" id="legend-rsi">
+                    <span style="color: #ffeb3b;">RSI6: <span class="legend-val">-</span></span>
+                    <span style="color: #ff9900;">RSI14: <span class="legend-val">-</span></span>
+                </div>
+                <div class="legend-row" id="legend-macd">
+                    <span style="color: #00ffcc;">MACD: <span class="legend-val">-</span></span>
+                    <span style="color: #ffcc00;">Signal: <span class="legend-val">-</span></span>
+                    <span style="color: #8888ff;">Histo: <span class="legend-val">-</span></span>
+                </div>
+                <div class="legend-row" id="legend-kdj">
+                    <span style="color: #ff44cc;">K: <span class="legend-val">-</span></span>
+                    <span style="color: #44ccff;">D: <span class="legend-val">-</span></span>
+                    <span style="color: #ffffff;">J: <span class="legend-val">-</span></span>
+                </div>
+            </div>
+        </div>
+        <div class="freq-section">
+            <div class="freq-card">
+                <div class="freq-title">Event Frequency</div>
+                <div id="event-frequency-chart"></div>
+            </div>
+            <div class="freq-card">
+                <div class="freq-title">Whale Transfer Amount Distribution (USD)</div>
+                <div id="whale-frequency-chart"></div>
+            </div>
+        </div>
+    </div>
+
+    <div id="tab-news" class="page-section">
+        <div class="news-toolbar">
+            <div class="news-filter">
+                <label for="news-source-filter">Source</label>
+                <select id="news-source-filter">
+                    <option value="all">All</option>
+                    <option value="news">News</option>
+                    <option value="polymarket">Polymarket</option>
+                </select>
+            </div>
+            <div class="news-filter">
+                <label for="news-decision-filter">Gate Decision</label>
+                <select id="news-decision-filter">
+                    <option value="all">All</option>
+                    <option value="kept">Kept</option>
+                    <option value="dropped">Dropped</option>
+                </select>
+            </div>
+            <div class="news-filter" style="flex: 1; min-width: 240px;">
+                <label for="news-search">Search</label>
+                <input id="news-search" type="text" placeholder="headline / question / why" />
+            </div>
+            <div class="news-summary" id="news-summary">0 records</div>
+        </div>
+        <div class="news-list" id="news-gated-list"></div>
+    </div>
+
+    <div id="modal">
+        <div class="modal-content">
+            <span class="close">&times;</span>
+            <div id="modal-body"></div>
+        </div>
+    </div>
+
+    <script>
+        const chartContainer = document.getElementById('chart-container');
+        const modal = document.getElementById('modal');
+        const modalBody = document.getElementById('modal-body');
+        const closeBtn = document.querySelector('.close');
+        const eventFrequencyChart = document.getElementById('event-frequency-chart');
+        const whaleFrequencyChart = document.getElementById('whale-frequency-chart');
+        const tabButtons = Array.from(document.querySelectorAll('.tab-btn'));
+        const pageSections = {
+            chart: document.getElementById('tab-chart'),
+            news: document.getElementById('tab-news'),
+        };
+        const newsSourceFilter = document.getElementById('news-source-filter');
+        const newsDecisionFilter = document.getElementById('news-decision-filter');
+        const newsSearch = document.getElementById('news-search');
+        const newsSummary = document.getElementById('news-summary');
+        const newsGatedList = document.getElementById('news-gated-list');
+
+        closeBtn.onclick = () => modal.style.display = 'none';
+        window.onclick = (event) => { if (event.target == modal) modal.style.display = 'none'; };
+
+        function setActiveTab(tabName) {
+            tabButtons.forEach(btn => btn.classList.toggle('active', btn.dataset.tab === tabName));
+            Object.entries(pageSections).forEach(([name, el]) => {
+                if (el) el.classList.toggle('active', name === tabName);
+            });
+            if (tabName === 'chart') {
+                chart.applyOptions({ width: chartContainer.clientWidth });
+                chart.timeScale().fitContent();
+            }
+        }
+
+        tabButtons.forEach(btn => {
+            btn.addEventListener('click', () => setActiveTab(btn.dataset.tab));
+        });
+
+        // 阻止图表区域的滚轮事件导致页面滚动
+        chartContainer.addEventListener('wheel', (e) => {
+            e.preventDefault();
+        }, { passive: false });
+
+        const chart = LightweightCharts.createChart(chartContainer, {
+            layout: {
+                background: { color: '#131722' },
+                textColor: '#d1d4dc',
+            },
+            grid: {
+                vertLines: { color: '#2a2e39' },
+                horzLines: { color: '#2a2e39' },
+            },
+            localization: {
+                locale: 'zh-CN',
+                dateFormat: 'yyyy-MM-dd',
+                timeFormatter: (time) => {
+                    const date = new Date(time * 1000);
+                    const y = date.getUTCFullYear();
+                    const mo = String(date.getUTCMonth() + 1).padStart(2, '0');
+                    const d = String(date.getUTCDate()).padStart(2, '0');
+                    const h = String(date.getUTCHours()).padStart(2, '0');
+                    const m = String(date.getUTCMinutes()).padStart(2, '0');
+                    return `${y}-${mo}-${d} ${h}:${m}`;
+                },
+            },
+            timeScale: {
+                borderColor: '#2a2e39',
+                timeVisible: true,
+                secondsVisible: false,
+            },
+            handleScroll: {
+                mouseWheel: true,
+                pressedMouseMove: true,
+                horzTouchDrag: true,
+                vertTouchDrag: true,
+            },
+            handleScale: {
+                mouseWheel: true,
+                pinch: true,
+                axisPressedMouseMove: true,
+            },
+        });
+
+        const candlestickSeries = chart.addCandlestickSeries({
+            upColor: '#26a69a',
+            downColor: '#ef5350',
+            borderVisible: false,
+            wickUpColor: '#26a69a',
+            wickDownColor: '#ef5350',
+        });
+
+        // --- Add Indicator Series ---
+        // Overlays (Main Chart)
+        const ma7Series = chart.addLineSeries({ color: '#00d8ff', lineWidth: 1, title: 'MA7' });
+        const ma25Series = chart.addLineSeries({ color: '#ffd600', lineWidth: 1, title: 'MA25' });
+        const ma99Series = chart.addLineSeries({ color: '#ffffff', lineWidth: 1, title: 'MA99' });
+        const upperSeries = chart.addLineSeries({ color: '#ff4444', lineWidth: 1, lineStyle: 2, title: 'Upper' });
+        const lowerSeries = chart.addLineSeries({ color: '#44ff44', lineWidth: 1, lineStyle: 2, title: 'Lower' });
+        const rangeUpperSeries = chart.addLineSeries({ color: '#ff9800', lineWidth: 2, lineStyle: 0, title: 'Range Upper' });
+        const rangeLowerSeries = chart.addLineSeries({ color: '#ff9800', lineWidth: 2, lineStyle: 0, title: 'Range Lower' });
+        const ENABLE_RANGE_BOUNDARY_LINES = false;
+        const RANGE_DEBUG_VISUAL = true;
+
+        // TP/SL Levels (OCO)
+         const tpSeries = chart.addLineSeries({
+             color: '#00ff00', 
+             lineWidth: 3, 
+             lineStyle: 0, 
+             title: 'Take Profit',
+             priceLineVisible: false,
+         });
+         const slSeries = chart.addLineSeries({
+             color: '#ff0000', 
+             lineWidth: 3, 
+             lineStyle: 0, 
+             title: 'Stop Loss',
+             priceLineVisible: false,
+         });
+
+        // Indicators in separate panes (using scaleMargins)
+        // RSI
+        const rsi6Series = chart.addLineSeries({
+            color: '#ffeb3b',
+            lineWidth: 1,
+            title: 'RSI(6)',
+            priceScaleId: 'rsi',
+        });
+        const rsiSeries = chart.addLineSeries({
+            color: '#ff9900',
+            lineWidth: 1,
+            title: 'RSI(14)',
+            priceScaleId: 'rsi',
+        });
+        chart.priceScale('rsi').applyOptions({
+            scaleMargins: { top: 0.7, bottom: 0.2 },
+            borderVisible: false,
+        });
+
+        // MACD
+        const macdSeries = chart.addLineSeries({
+            color: '#00ffcc',
+            lineWidth: 1,
+            title: 'MACD',
+            priceScaleId: 'macd',
+        });
+        const signalSeries = chart.addLineSeries({
+            color: '#ffcc00',
+            lineWidth: 1,
+            title: 'Signal',
+            priceScaleId: 'macd',
+        });
+        const histoSeries = chart.addHistogramSeries({
+            color: '#8888ff',
+            priceScaleId: 'macd',
+        });
+        chart.priceScale('macd').applyOptions({
+            scaleMargins: { top: 0.8, bottom: 0.1 },
+            borderVisible: false,
+        });
+
+        // KDJ
+        const kSeries = chart.addLineSeries({
+            color: '#ff44cc',
+            lineWidth: 1,
+            title: 'K',
+            priceScaleId: 'kdj',
+        });
+        const dSeries = chart.addLineSeries({
+            color: '#44ccff',
+            lineWidth: 1,
+            title: 'D',
+            priceScaleId: 'kdj',
+        });
+        const jSeries = chart.addLineSeries({
+            color: '#ffffff',
+            lineWidth: 1,
+            title: 'J',
+            priceScaleId: 'kdj',
+        });
+        chart.priceScale('kdj').applyOptions({
+            scaleMargins: { top: 0.85, bottom: 0.05 },
+            borderVisible: false,
+        });
+
+        // CCI
+        const cciSeries = chart.addLineSeries({
+            color: '#ffff00',
+            lineWidth: 1,
+            title: 'CCI',
+            priceScaleId: 'cci',
+        });
+        chart.priceScale('cci').applyOptions({
+            scaleMargins: { top: 0.9, bottom: 0.02 },
+            borderVisible: false,
+        });
+
+        // WR
+        const wrSeries = chart.addLineSeries({
+            color: '#ff00ff',
+            lineWidth: 1,
+            title: 'WR',
+            priceScaleId: 'wr',
+        });
+        chart.priceScale('wr').applyOptions({
+            scaleMargins: { top: 0.95, bottom: 0.01 },
+            borderVisible: false,
+        });
+
+        // OBV
+        const obvSeries = chart.addLineSeries({
+            color: '#00ffff',
+            lineWidth: 1,
+            title: 'OBV',
+            priceScaleId: 'obv',
+        });
+        chart.priceScale('obv').applyOptions({
+            scaleMargins: { top: 0.98, bottom: 0 },
+            borderVisible: false,
+        });
+
+        // Update Main Candlestick margins to make room
+        chart.priceScale('right').applyOptions({
+            scaleMargins: { top: 0.05, bottom: 0.5 },
+        });
+
+        // --- Hover Legend Logic ---
+        const legendPrice = document.getElementById('legend-price');
+        const legendMA = document.getElementById('legend-ma');
+        const legendOCO = document.getElementById('legend-oco');
+        const legendRSI = document.getElementById('legend-rsi');
+        const legendMACD = document.getElementById('legend-macd');
+        const legendKDJ = document.getElementById('legend-kdj');
+        const intervalSelect = document.getElementById('interval-select');
+
+        intervalSelect.addEventListener('change', () => {
+            fetchData();
+        });
+        newsSourceFilter.addEventListener('change', () => renderNewsGated(lastDataResponse?.news_gated_records || []));
+        newsDecisionFilter.addEventListener('change', () => renderNewsGated(lastDataResponse?.news_gated_records || []));
+        newsSearch.addEventListener('input', () => renderNewsGated(lastDataResponse?.news_gated_records || []));
+
+        chart.subscribeCrosshairMove((param) => {
+            if (param.time) {
+                const data = param.seriesData;
+                
+                // Helper to update legend row
+                const updateRow = (row, seriesMap) => {
+                    const spans = row.querySelectorAll('.legend-val');
+                    let i = 0;
+                    for (const [series, label] of seriesMap) {
+                        const val = data.get(series);
+                        if (val) {
+                            let displayVal = "";
+                            if (val.value !== undefined) displayVal = val.value.toFixed(2);
+                            else if (val.close !== undefined) displayVal = `O:${val.open.toFixed(2)} H:${val.high.toFixed(2)} L:${val.low.toFixed(2)} C:${val.close.toFixed(2)}`;
+                            
+                            if (val.close !== undefined) {
+                                // Price row special handling
+                                spans[0].innerText = val.open.toFixed(2);
+                                spans[1].innerText = val.high.toFixed(2);
+                                spans[2].innerText = val.low.toFixed(2);
+                                spans[3].innerText = val.close.toFixed(2);
+                            } else {
+                                spans[i].innerText = displayVal;
+                                i++;
+                            }
+                        } else {
+                            if (row.id === 'legend-price') {
+                                spans.forEach(s => s.innerText = "-");
+                            } else {
+                                spans[i].innerText = "-";
+                                i++;
+                            }
+                        }
+                    }
+                };
+
+                updateRow(legendPrice, [[candlestickSeries, "Price"]]);
+                updateRow(legendMA, [[ma7Series, "MA7"], [ma25Series, "MA25"], [ma99Series, "MA99"]]);
+                updateRow(legendOCO, [[tpSeries, "TP"], [slSeries, "SL"]]);
+                updateRow(legendRSI, [[rsi6Series, "RSI6"], [rsiSeries, "RSI14"]]);
+                updateRow(legendMACD, [[macdSeries, "MACD"], [signalSeries, "Signal"], [histoSeries, "Histo"]]);
+                updateRow(legendKDJ, [[kSeries, "K"], [dSeries, "D"], [jSeries, "J"]]);
+            } else {
+                // Clear legend
+                [legendPrice, legendMA, legendOCO, legendRSI, legendMACD, legendKDJ].forEach(row => {
+                    row.querySelectorAll('.legend-val').forEach(s => s.innerText = "-");
+                });
+            }
+        });
+
+        let lastDataUrl = '';
+        let lastDataResponse = null;
+        let loadingWatchdogId = null;
+        let latestFetchSeq = 0;
+        let rangeOverlayBound = false;
+        let latestRangePlans = [];
+        let latestKlines = [];
+
+        function setLoading(visible, phase = '') {
+            const el = document.getElementById('loading');
+            if (!el) return;
+            if (visible) {
+                el.textContent = phase ? `Loading Market Data... (${phase})` : 'Loading Market Data...';
+                el.style.display = 'block';
+                if (loadingWatchdogId) clearTimeout(loadingWatchdogId);
+                loadingWatchdogId = setTimeout(() => {
+                    console.warn('[report] loading watchdog fired, force hide overlay');
+                    el.style.display = 'none';
+                }, 15000);
+            } else {
+                if (loadingWatchdogId) {
+                    clearTimeout(loadingWatchdogId);
+                    loadingWatchdogId = null;
+                }
+                el.style.display = 'none';
+            }
+        }
+
+        function fetchWithTimeout(url, timeoutMs = 12000) {
+            const controller = new AbortController();
+            const timeoutId = setTimeout(() => controller.abort(), timeoutMs);
+            return fetch(url, { signal: controller.signal })
+                .finally(() => clearTimeout(timeoutId));
+        }
+
+        async function fetchData() {
+            const fetchSeq = ++latestFetchSeq;
+            const interval = intervalSelect.value;
+            const url = `/api/data?interval=${interval}`;
+            if (url === lastDataUrl && lastDataResponse) {
+                console.log("Using client-side cache for data");
+                setLoading(true, 'rendering cache');
+                await renderFromData(lastDataResponse);
+                setLoading(false);
+                return;
+            }
+
+            setLoading(true, 'requesting /api/data');
+            try {
+                const response = await fetchWithTimeout(url, 12000);
+                if (!response.ok) {
+                    throw new Error(`HTTP ${response.status} while fetching ${url}`);
+                }
+                setLoading(true, 'parsing payload');
+                const data = await response.json();
+                if (!data || !Array.isArray(data.klines)) {
+                    throw new Error('Invalid /api/data payload: missing klines array');
+                }
+                
+                lastDataUrl = url;
+                lastDataResponse = data;
+                
+                setLoading(true, 'rendering chart');
+                await renderFromData(data);
+            } catch (e) {
+                console.error("Fetch error:", e);
+            } finally {
+                if (fetchSeq === latestFetchSeq) {
+                    setLoading(false);
+                }
+            }
+        }
+
+        async function renderFromData(data) {
+            console.log('[range] /api/data range_debug:', data.range_debug || null);
+            console.log('[range] /api/data range_plans:', Array.isArray(data.range_plans) ? data.range_plans : []);
+            candlestickSeries.setData(data.klines);
+            
+            // Set indicator data
+            const ma7Data = data.klines.filter(d => d.ma7 !== null).map(d => ({ time: d.time, value: d.ma7 }));
+            const ma25Data = data.klines.filter(d => d.ma25 !== null).map(d => ({ time: d.time, value: d.ma25 }));
+            const ma99Data = data.klines.filter(d => d.ma99 !== null).map(d => ({ time: d.time, value: d.ma99 }));
+            const upperData = data.klines.filter(d => d.upper !== null).map(d => ({ time: d.time, value: d.upper }));
+            const lowerData = data.klines.filter(d => d.lower !== null).map(d => ({ time: d.time, value: d.lower }));
+            
+            const rsi6Data = data.klines.filter(d => d.rsi6 !== null).map(d => ({ time: d.time, value: d.rsi6 }));
+            const rsiData = data.klines.filter(d => d.rsi !== null).map(d => ({ time: d.time, value: d.rsi }));
+            const macdData = data.klines.filter(d => d.macd !== null).map(d => ({ time: d.time, value: d.macd }));
+            const signalData = data.klines.filter(d => d.signal !== null).map(d => ({ time: d.time, value: d.signal }));
+            const histoData = data.klines.filter(d => d.histo !== null).map(d => ({ 
+                time: d.time, 
+                value: d.histo,
+                color: d.histo >= 0 ? '#26a69a' : '#ef5350'
+            }));
+            
+            const kData = data.klines.filter(d => d.k !== null).map(d => ({ time: d.time, value: d.k }));
+            const dData = data.klines.filter(d => d.d !== null).map(d => ({ time: d.time, value: d.d }));
+            const jData = data.klines.filter(d => d.j !== null).map(d => ({ time: d.time, value: d.j }));
+            const cciData = data.klines.filter(d => d.cci !== null).map(d => ({ time: d.time, value: d.cci }));
+            const wrData = data.klines.filter(d => d.wr !== null).map(d => ({ time: d.time, value: d.wr }));
+            const obvData = data.klines.filter(d => d.obv !== null).map(d => ({ time: d.time, value: d.obv }));
+
+            ma7Series.setData(ma7Data);
+            ma25Series.setData(ma25Data);
+            ma99Series.setData(ma99Data);
+            upperSeries.setData(upperData);
+            lowerSeries.setData(lowerData);
+            renderRangePlans(data.range_plans || [], data.klines || []);
+
+            // --- Process TP/SL (OCO) data ---
+            const tpData = [];
+            const slData = [];
+            let lastTP = null;
+            let lastSL = null;
+
+            // Sort operations by time
+            const sortedOps = [...data.operations].sort((a, b) => a.timestamp_display - b.timestamp_display);
+
+            let opIndex = 0;
+            data.klines.forEach(kline => {
+                const kTime = kline.time;
+                
+                // Update state based on ops that happened BEFORE or AT this kline time
+                while (opIndex < sortedOps.length && sortedOps[opIndex].timestamp_display <= kTime) {
+                    const op = sortedOps[opIndex];
+                    if (op.protection_orders) {
+                        // 增量更新：只有明确更新的一侧才覆盖，避免 null 抹掉历史有效值
+                        if (op.protection_orders.tp_updated) {
+                            lastTP = op.protection_orders.tp;
+                        } else if (
+                            op.protection_orders.checked &&
+                            op.protection_orders.tp !== undefined &&
+                            op.protection_orders.tp !== null
+                        ) {
+                            // 兼容旧缓存结构
+                            lastTP = op.protection_orders.tp;
+                        }
+
+                        if (op.protection_orders.sl_updated) {
+                            lastSL = op.protection_orders.sl;
+                        } else if (
+                            op.protection_orders.checked &&
+                            op.protection_orders.sl !== undefined &&
+                            op.protection_orders.sl !== null
+                        ) {
+                            // 兼容旧缓存结构
+                            lastSL = op.protection_orders.sl;
+                        }
+                    }
+                    opIndex++;
+                }
+                
+                if (lastTP !== null) tpData.push({ time: kTime, value: lastTP });
+                if (lastSL !== null) slData.push({ time: kTime, value: lastSL });
+            });
+
+            tpSeries.setData(tpData);
+            slSeries.setData(slData);
+
+            rsi6Series.setData(rsi6Data);
+            rsiSeries.setData(rsiData);
+            macdSeries.setData(macdData);
+            signalSeries.setData(signalData);
+            histoSeries.setData(histoData);
+            kSeries.setData(kData);
+            dSeries.setData(dData);
+            jSeries.setData(jData);
+            cciSeries.setData(cciData);
+            wrSeries.setData(wrData);
+            obvSeries.setData(obvData);
+            
+            renderMarkers(data.operations);
+            renderFrequencyCharts(
+                data.event_frequency || [],
+                data.whale_transfer_distribution || [],
+                data.whale_transfer_samples || 0
+            );
+            renderNewsGated(data.news_gated_records || []);
+            
+            // 自动缩放以适应所有数据内容
+            chart.timeScale().fitContent();
+
+            // Stats should not block main market-data rendering.
+            void fetchStats();
+        }
+
+        async function fetchStats() {
+            try {
+                const statsRes = await fetch('/api/stats');
+                if (!statsRes.ok) {
+                    throw new Error(`HTTP ${statsRes.status} while fetching /api/stats`);
+                }
+                const stats = await statsRes.json();
+                document.getElementById('stat-activations').innerText = stats.activations ?? "-";
+                document.getElementById('stat-trades').innerText = stats.total_trades ?? "-";
+                document.getElementById('stat-buys').innerText = stats.buy_trades ?? "-";
+                document.getElementById('stat-sells').innerText = stats.sell_trades ?? "-";
+            } catch (e) {
+                console.error("Stats fetch error:", e);
+                document.getElementById('stat-activations').innerText = "-";
+                document.getElementById('stat-trades').innerText = "-";
+                document.getElementById('stat-buys').innerText = "-";
+                document.getElementById('stat-sells').innerText = "-";
+            }
+        }
+
+        function renderFrequencyCharts(eventFrequency, whaleDistribution, whaleSampleCount) {
+            renderVerticalBarChart({
+                container: eventFrequencyChart,
+                rows: eventFrequency,
+                labelKey: 'event_type',
+                countKey: 'count',
+                emptyText: 'No event records in selected range.'
+            });
+
+            renderVerticalBarChart({
+                container: whaleFrequencyChart,
+                rows: whaleDistribution,
+                labelKey: 'range_label',
+                countKey: 'count',
+                emptyText: 'No whale transfer records in selected range.',
+                suffix: whaleSampleCount > 0 ? ` (samples: ${whaleSampleCount})` : ''
+            });
+        }
+
+        function renderNewsGated(records) {
+            const sourceFilter = newsSourceFilter.value;
+            const decisionFilter = newsDecisionFilter.value;
+            const keyword = newsSearch.value.trim().toLowerCase();
+            const filtered = (records || []).filter(record => {
+                const sourceType = String(record.source_type || '').toLowerCase();
+                const decision = String(record.gate_decision || '').toLowerCase();
+                const searchable = [
+                    record.headline_or_question,
+                    record.why,
+                    record.source_id,
+                    record.id,
+                ].join(' ').toLowerCase();
+
+                if (sourceFilter !== 'all' && sourceType !== sourceFilter) return false;
+                if (decisionFilter !== 'all' && decision !== decisionFilter) return false;
+                if (keyword && !searchable.includes(keyword)) return false;
+                return true;
+            });
+
+            newsSummary.textContent = `${filtered.length} / ${(records || []).length} records`;
+            if (!filtered.length) {
+                newsGatedList.innerHTML = `<div class="news-empty">No news gate records match the current filters.</div>`;
+                return;
+            }
+
+            newsGatedList.innerHTML = filtered.map(record => {
+                const decision = String(record.gate_decision || 'unknown').toLowerCase();
+                const decisionClass = decision === 'kept' ? 'pill-kept' : (decision === 'dropped' ? 'pill-dropped' : 'pill-neutral');
+                const hypotheses = Array.isArray(record.linked_hypothesis_ids) && record.linked_hypothesis_ids.length
+                    ? record.linked_hypothesis_ids.join(', ')
+                    : 'none';
+                const timeLabel = record.recorded_at || record.event_time || record.log_folder || 'unknown';
+                const priceContext = record.price_context_at_ingestion || {};
+                return `
+                    <details class="news-record">
+                        <summary>
+                            <div class="news-main">
+                                <div class="news-meta">
+                                    <span>${escapeHtml(timeLabel)}</span>
+                                    <span class="pill ${decisionClass}">${escapeHtml(decision || 'unknown')}</span>
+                                    <span>${escapeHtml(record.source_type || 'unknown')}</span>
+                                    <span>${escapeHtml(record.impact_bias || 'unknown')}</span>
+                                    <span>hypothesis: ${escapeHtml(hypotheses)}</span>
+                                </div>
+                                <div class="news-headline">${escapeHtml(record.headline_or_question || record.source_id || 'untitled')}</div>
+                                <div class="news-why">${escapeHtml(record.why || 'no why recorded')}</div>
+                            </div>
+                        </summary>
+                        <div class="news-detail-grid">
+                            <div class="news-detail-card">
+                                <h4>Record</h4>
+                                <pre>${escapeHtml(JSON.stringify({
+                                    id: record.id,
+                                    source_type: record.source_type,
+                                    source_id: record.source_id,
+                                    event_time: record.event_time,
+                                    recorded_at: record.recorded_at,
+                                    gate_decision: record.gate_decision,
+                                    impact_bias: record.impact_bias,
+                                    linked_hypothesis_ids: record.linked_hypothesis_ids,
+                                    log_folder: record.log_folder,
+                                }, null, 2))}</pre>
+                            </div>
+                            <div class="news-detail-card">
+                                <h4>Price Context</h4>
+                                <pre>${escapeHtml(JSON.stringify(priceContext, null, 2))}</pre>
+                            </div>
+                            <div class="news-detail-card">
+                                <h4>Why</h4>
+                                <pre>${escapeHtml(record.why || '')}</pre>
+                            </div>
+                        </div>
+                    </details>
+                `;
+            }).join('');
+        }
+
+        function renderVerticalBarChart({ container, rows, labelKey, countKey, emptyText, suffix = '' }) {
+            if (!container) return;
+            if (!rows || rows.length === 0) {
+                container.innerHTML = `<div class="freq-empty">${emptyText}</div>`;
+                return;
+            }
+
+            const maxCount = Math.max(...rows.map(r => Number(r[countKey] || 0)), 1);
+            const midCount = Math.round(maxCount / 2);
+            let colsHtml = '';
+            rows.forEach(row => {
+                const label = escapeHtml(String(row[labelKey] ?? 'unknown'));
+                const count = Number(row[countKey] || 0);
+                const heightPct = Math.max(2, (count / maxCount) * 100);
+                colsHtml += `
+                    <div class="freq-col">
+                        <div class="freq-col-value">${count}</div>
+                        <div class="freq-col-bar-wrap">
+                            <div class="freq-col-bar" style="height:${heightPct}%;"></div>
+                        </div>
+                        <div class="freq-col-label">${label}</div>
+                    </div>
+                `;
+            });
+
+            container.innerHTML = `
+                <div class="freq-chart-wrap">
+                    <div class="freq-y-axis">
+                        <div>${maxCount}</div>
+                        <div>${midCount}</div>
+                        <div>0</div>
+                    </div>
+                    <div class="freq-plot-scroll">
+                        <div class="freq-plot">${colsHtml}</div>
+                    </div>
+                </div>
+                ${suffix ? `<div class="freq-empty">${escapeHtml(suffix)}</div>` : ''}
+            `;
+        }
+
+        function escapeHtml(str) {
+            return str
+                .replace(/&/g, '&amp;')
+                .replace(/</g, '&lt;')
+                .replace(/>/g, '&gt;')
+                .replace(/"/g, '&quot;')
+                .replace(/'/g, '&#39;');
+        }
+
+        function renderRangePlans(rangePlans, klines) {
+            if (!Array.isArray(klines) || klines.length === 0 || !Array.isArray(rangePlans)) {
+                rangeUpperSeries.setData([]);
+                rangeLowerSeries.setData([]);
+                latestRangePlans = [];
+                latestKlines = [];
+                drawRangeZones();
+                return;
+            }
+            // Boundary lines are optional because line-series gap data may throw
+            // "Value is null" on some edge-cases in lightweight-charts 4.x.
+            if (!ENABLE_RANGE_BOUNDARY_LINES) {
+                rangeUpperSeries.setData([]);
+                rangeLowerSeries.setData([]);
+            }
+            latestRangePlans = Array.isArray(rangePlans) ? rangePlans : [];
+            latestKlines = Array.isArray(klines) ? klines : [];
+            if (!rangeOverlayBound) {
+                chart.timeScale().subscribeVisibleTimeRangeChange(drawRangeZones);
+                chart.subscribeCrosshairMove(() => drawRangeZones());
+                window.addEventListener('resize', drawRangeZones);
+                rangeOverlayBound = true;
+            }
+            drawRangeZones();
+        }
+
+        function drawRangeZones() {
+            document.querySelectorAll('.range-zone').forEach(el => el.remove());
+            document.querySelectorAll('.range-order-line').forEach(el => el.remove());
+            document.querySelectorAll('.range-order-label').forEach(el => el.remove());
+            if (!Array.isArray(latestRangePlans) || !latestRangePlans.length || !Array.isArray(latestKlines) || !latestKlines.length) {
+                console.log('[range] skip draw: plans_or_klines_empty', {
+                    plans: Array.isArray(latestRangePlans) ? latestRangePlans.length : -1,
+                    klines: Array.isArray(latestKlines) ? latestKlines.length : -1,
+                });
+                return;
+            }
+
+            const kTimes = latestKlines.map(k => Number(k.time || 0)).filter(v => Number.isFinite(v) && v > 0);
+            if (!kTimes.length) {
+                console.log('[range] skip draw: no valid kline timestamps');
+                return;
+            }
+            const firstTs = kTimes[0];
+            const lastTs = kTimes[kTimes.length - 1];
+            const timeScale = chart.timeScale();
+            const findAnchoredTime = (targetTs, mode) => {
+                if (!Number.isFinite(targetTs)) return null;
+                if (mode === 'start') {
+                    for (let i = 0; i < kTimes.length; i++) {
+                        if (kTimes[i] >= targetTs) return kTimes[i];
+                    }
+                    return null;
+                }
+                for (let i = kTimes.length - 1; i >= 0; i--) {
+                    if (kTimes[i] <= targetTs) return kTimes[i];
+                }
+                return null;
+            };
+
+            latestRangePlans.forEach(plan => {
+                const lower = Number(plan.lower_breakout);
+                const upper = Number(plan.upper_breakout);
+                if (!Number.isFinite(lower) || !Number.isFinite(upper) || upper <= lower) {
+                    console.log('[range] invalid bounds:', plan);
+                    return;
+                }
+
+                const rawStart = Math.max(Number(plan.start_ts || 0), firstTs);
+                const endTsRaw = Number(plan.end_ts || 0);
+                const rawEnd = Math.min(endTsRaw > 0 ? endTsRaw : lastTs, lastTs);
+                if (!Number.isFinite(rawStart) || !Number.isFinite(rawEnd) || rawEnd < rawStart) {
+                    console.log('[range] invalid raw window:', { plan, rawStart, rawEnd });
+                    return;
+                }
+                // Completely outside current kline domain: skip early.
+                if (rawEnd < firstTs || rawStart > lastTs) {
+                    console.log('[range] out of visible kline domain:', { plan, firstTs, lastTs, rawStart, rawEnd });
+                    return;
+                }
+
+                const startTs = findAnchoredTime(rawStart, 'start');
+                const endTs = findAnchoredTime(rawEnd, 'end');
+                if (!Number.isFinite(startTs) || !Number.isFinite(endTs) || endTs < startTs) {
+                    console.log('[range] anchor failed:', { plan, rawStart, rawEnd, startTs, endTs });
+                    return;
+                }
+
+                const x1 = timeScale.timeToCoordinate(startTs);
+                const x2 = timeScale.timeToCoordinate(endTs);
+                const yUpper = candlestickSeries.priceToCoordinate(upper);
+                const yLower = candlestickSeries.priceToCoordinate(lower);
+                if (x1 === null || x2 === null || yUpper === null || yLower === null) {
+                    console.log('[range] coordinate failed:', {
+                        plan,
+                        startTs,
+                        endTs,
+                        x1,
+                        x2,
+                        yUpper,
+                        yLower,
+                    });
+                    return;
+                }
+
+                const left = Math.min(x1, x2);
+                let width = Math.abs(x2 - x1);
+                const startIdx = kTimes.indexOf(startTs);
+                const endIdx = kTimes.indexOf(endTs);
+                let barPixelWidth = 10;
+                if (startIdx >= 0 && startIdx + 1 < kTimes.length) {
+                    const nx = timeScale.timeToCoordinate(kTimes[startIdx + 1]);
+                    if (nx !== null) barPixelWidth = Math.max(8, Math.abs(nx - x1));
+                }
+                // Single-bar or near-zero width windows are hard to see; expand to at least ~1 bar.
+                width = Math.max(width, Math.max(12, barPixelWidth * 0.9));
+                const top = Math.min(yUpper, yLower);
+                const height = Math.max(2, Math.abs(yLower - yUpper));
+
+                const zone = document.createElement('div');
+                zone.className = 'range-zone';
+                zone.style.left = `${left}px`;
+                zone.style.top = `${top}px`;
+                zone.style.width = `${width}px`;
+                zone.style.height = `${height}px`;
+
+                const durationBars = (startIdx >= 0 && endIdx >= 0) ? Math.max(1, endIdx - startIdx + 1) : 1;
+                const positionHint = (plan.long_level_count > 0 && plan.short_level_count > 0)
+                    ? 'both'
+                    : (plan.long_level_count > 0 ? 'long-only' : (plan.short_level_count > 0 ? 'short-only' : 'none'));
+                zone.title = `RANGE ${positionHint} | ${lower.toFixed(2)} - ${upper.toFixed(2)} | ${durationBars} bars`;
+                if (RANGE_DEBUG_VISUAL) {
+                    zone.style.outline = '1px dashed rgba(255,255,255,0.9)';
+                    zone.style.boxShadow = '0 0 0 1px rgba(255,152,0,0.55) inset';
+                }
+                chartContainer.appendChild(zone);
+
+                const levels = Array.isArray(plan.levels) ? plan.levels : [];
+                levels.forEach(level => {
+                    const price = Number(level.price);
+                    if (!Number.isFinite(price)) return;
+                    const ly = candlestickSeries.priceToCoordinate(price);
+                    if (ly === null) return;
+
+                    const line = document.createElement('div');
+                    line.className = `range-order-line ${level.bucket === 'short' ? 'short' : 'long'} ${level.role === 'exit' ? 'exit' : 'entry'}`;
+                    line.style.left = `${left + 1}px`;
+                    line.style.top = `${ly}px`;
+                    line.style.width = `${Math.max(8, width - 2)}px`;
+                    chartContainer.appendChild(line);
+
+                    const label = document.createElement('div');
+                    label.className = `range-order-label ${level.bucket === 'short' ? 'short' : 'long'}`;
+                    const roleText = level.role === 'exit' ? 'X' : 'E';
+                    label.textContent = `${level.bucket === 'short' ? 'S' : 'L'}-${roleText} ${price.toFixed(2)}`;
+                    label.style.left = `${left + width + 3}px`;
+                    label.style.top = `${ly}px`;
+                    chartContainer.appendChild(label);
+                });
+
+                console.log('[range] zone rendered:', {
+                    startTs,
+                    endTs,
+                    lower,
+                    upper,
+                    left,
+                    width,
+                    top,
+                    height,
+                    durationBars,
+                    startIdx,
+                    endIdx,
+                    barPixelWidth,
+                    levels: levels,
+                });
+            });
+            if (RANGE_DEBUG_VISUAL) {
+                const zones = chartContainer.querySelectorAll('.range-zone');
+                console.log('[range] zone dom count:', zones.length);
+                zones.forEach((z, i) => {
+                    const r = z.getBoundingClientRect();
+                    console.log(`[range] zone#${i} rect`, { x: r.x, y: r.y, w: r.width, h: r.height });
+                });
+            }
+        }
+
+        function renderMarkers(operations) {
+            console.log("Total operations from API:", operations.length);
+            document.querySelectorAll('.trade-box').forEach(el => el.remove());
+            
+            const klineData = candlestickSeries.data();
+            const klineMap = {};
+            klineData.forEach(d => klineMap[d.time] = d);
+
+            const interval = intervalSelect.value;
+            let windowSize = 900; // default 15m
+            if (interval === '1h') windowSize = 3600;
+            else if (interval === '4h') windowSize = 14400;
+            else if (interval === '1d') windowSize = 86400;
+
+            const grouped = {};
+            operations.forEach(op => {
+                const ts = op.timestamp_display;
+                const windowTs = Number.isFinite(op.window_ts) ? op.window_ts : (Math.floor(ts / windowSize) * windowSize);
+                if (!grouped[windowTs]) grouped[windowTs] = [];
+                grouped[windowTs].push(op);
+            });
+
+            const timeScale = chart.timeScale();
+            
+            const doRender = () => {
+                document.querySelectorAll('.trade-box').forEach(el => el.remove());
+                
+                Object.keys(grouped).forEach(windowTsStr => {
+                    const windowTs = parseInt(windowTsStr);
+                    const ops = grouped[windowTsStr];
+                    
+                    const x = timeScale.timeToCoordinate(windowTs);
+                    if (x === null) return;
+
+                    // 获取 K 线坐标以便“依附”
+                    const candle = klineMap[windowTs];
+                    let baseY = null;
+                    if (candle) {
+                        baseY = candlestickSeries.priceToCoordinate(candle.low);
+                    }
+
+                    const actions = [];
+                    ops.forEach(op => {
+                        const opTags = getTagsForOp(op);
+                        opTags.forEach(tag => {
+                            if (!actions.includes(tag)) {
+                                actions.push(tag);
+                            }
+                        });
+                    });
+
+                    if (actions.some(a => ['B', 'S', 'O', 'C', 'R'].includes(a))) {
+                        const nIdx = actions.indexOf('N');
+                        if (nIdx !== -1) actions.splice(nIdx, 1);
+                    }
+
+                    const priority = {'B': 1, 'S': 2, 'C': 3, 'O': 4, 'R': 5, 'N': 6};
+                    actions.sort((a, b) => priority[a] - priority[b]);
+
+                    actions.forEach((type, index) => {
+                        const box = document.createElement('div');
+                        box.className = 'trade-box';
+                        
+                        let colorClass = 'trade-neutral';
+                        if (type === 'B') colorClass = 'trade-buy';
+                        else if (type === 'S') colorClass = 'trade-sell';
+                        else if (type === 'O') colorClass = 'trade-oco';
+                        else if (type === 'C') colorClass = 'trade-close';
+                        else if (type === 'R') colorClass = 'trade-filled';
+                        
+                        box.classList.add(colorClass);
+                        box.innerText = type;
+                        box.style.left = (x - 10) + 'px';
+                        
+                        // 依附逻辑：如果有 K 线坐标，显示在 K 线下方 10px 处开始叠加
+                        if (baseY !== null) {
+                            box.style.top = (baseY + 10 + index * 25) + 'px';
+                        } else {
+                            box.style.bottom = (50 + index * 25) + 'px';
+                        }
+                        
+                        box.onclick = () => showDetail(windowTs, ops);
+                        chartContainer.appendChild(box);
+                    });
+                });
+            };
+
+            timeScale.subscribeVisibleTimeRangeChange(doRender);
+            setTimeout(doRender, 100);
+        }
+
+        function getTagsForOp(op) {
+            const tags = [];
+            if (op.trades && op.trades.length > 0) {
+                op.trades.forEach(t => {
+                    const resultStr = typeof t.result === 'string' ? t.result : JSON.stringify(t.result);
+                    if (resultStr && resultStr.includes("Error calling tool")) {
+                        return; 
+                    }
+
+                    const orderType = (t.result && t.result.type) || (t.args && t.args.order_type) || "";
+                    
+                    let type = 'N';
+                    if (t.side === 'BUY') type = 'B';
+                    else if (t.side === 'SELL') type = 'S';
+                    else if (t.side === 'R') type = 'R';
+                    
+                    if (t.tool === 'close_coin_futures_position' || t.tool === 'close_usdt_futures_position') {
+                        type = 'C';
+                    } 
+                    else if (t.tool === 'cancel_all_coin_futures_orders' ||
+                             t.tool === 'cancel_all_usdt_futures_orders' ||
+                             t.tool === 'cancel_coin_futures_order' ||
+                             t.tool === 'cancel_usdt_futures_order' ||
+                             orderType.includes('STOP') || 
+                             orderType.includes('TAKE_PROFIT')) {
+                        type = 'O';
+                    }
+                    else if (t.tool === 'ORDER_FILLED') {
+                        type = 'R';
+                    }
+                    
+                    if (!tags.includes(type)) {
+                        tags.push(type);
+                    }
+                });
+            } else {
+                tags.push('N');
+            }
+            return tags;
+        }
+
+        async function showDetail(windowTs, ops) {
+            modalBody.innerHTML = `<h2>Window Details</h2><div class="log-body">Loading details...</div>`;
+            modal.style.display = 'block';
+            let detailOps = ops;
+            try {
+                const interval = intervalSelect.value;
+                const res = await fetchWithTimeout(`/api/window_details?interval=${encodeURIComponent(interval)}&window_ts=${encodeURIComponent(windowTs)}`, 15000);
+                if (res.ok) {
+                    const payload = await res.json();
+                    if (payload && Array.isArray(payload.operations) && payload.operations.length > 0) {
+                        detailOps = payload.operations;
+                    }
+                }
+            } catch (e) {
+                console.warn("Window detail fetch failed, fallback to lite ops", e);
+            }
+
+            let html = `<h2>Window Details (${ops.length} events)</h2>`;
+            
+            // Sort events by actual timestamp
+            detailOps.sort((a, b) => new Date(a.local_time) - new Date(b.local_time));
+
+            html = `<h2>Window Details (${detailOps.length} events)</h2>`;
+            detailOps.forEach((op, index) => {
+                const opTags = getTagsForOp(op);
+                let tagHtml = '';
+                opTags.forEach(tag => {
+                    let colorClass = 'trade-neutral';
+                    if (tag === 'B') colorClass = 'trade-buy';
+                    else if (tag === 'S') colorClass = 'trade-sell';
+                    else if (tag === 'O') colorClass = 'trade-oco';
+                    else if (tag === 'C') colorClass = 'trade-close';
+                    else if (tag === 'R') colorClass = 'trade-filled';
+                    tagHtml += `<span class="tag-pill ${colorClass}">${tag}</span>`;
+                });
+
+                html += `
+                    <div class="event-container">
+                        <div class="event-header">
+                            <span>Event ${index + 1}: ${op.event_type} ${tagHtml}</span>
+                            <span style="color: #787b86;">${op.local_time}</span>
+                        </div>
+                        
+                        <details>
+                            <summary>Execution Summary</summary>
+                            <div class="log-body">${op.execution_txt}</div>
+                        </details>
+                        
+                        <details>
+                            <summary>Explanation</summary>
+                            <div class="log-body">${op.explanation}</div>
+                        </details>
+                        
+                        <details>
+                            <summary>Memory Reasoning</summary>
+                            <div class="log-body">${op.memory_reasoning}</div>
+                        </details>
+                        
+                        <details>
+                            <summary>Short-term Memory</summary>
+                            ${renderMemorySnapshot(op.short_memory_snapshot, op.shortterm, op.short_memory_ops)}
+                        </details>
+                        
+                        <details>
+                            <summary>Experience (Long-term)</summary>
+                            ${renderMemorySnapshot(op.long_memory_snapshot, op.experience, op.long_memory_ops)}
+                        </details>
+
+                        <details>
+                            <summary>Long Horizon Context</summary>
+                            ${renderLongContext(op)}
+                        </details>
+                        
+                        <details>
+                            <summary>Indicators Snapshot</summary>
+                            <div class="log-body"><pre>${JSON.stringify(op.indicators, null, 2)}</pre></div>
+                        </details>
+                        
+                        <details>
+                            <summary>Trades Executed (${op.trades.length})</summary>
+                            <div class="log-body"><pre>${JSON.stringify(op.trades, null, 2)}</pre></div>
+                        </details>
+                    </div>
+                `;
+            });
+
+            modalBody.innerHTML = html;
+            modal.style.display = 'block';
+        }
+
+        function escapeHtml(text) {
+            return String(text ?? '')
+                .replace(/&/g, '&amp;')
+                .replace(/</g, '&lt;')
+                .replace(/>/g, '&gt;')
+                .replace(/"/g, '&quot;')
+                .replace(/'/g, '&#39;');
+        }
+
+        function renderMemorySnapshot(snapshot, fallbackText, ops) {
+            if (snapshot && typeof snapshot === 'object') {
+                const sections = Object.entries(snapshot).map(([key, value]) => `
+                    <details>
+                        <summary>${escapeHtml(key)}</summary>
+                        <div class="log-body"><pre>${escapeHtml(JSON.stringify(value, null, 2))}</pre></div>
+                    </details>
+                `).join('');
+                const opsBlock = Array.isArray(ops) && ops.length ? `
+                    <details>
+                        <summary>Patch Ops (${ops.length})</summary>
+                        <div class="log-body"><pre>${escapeHtml(JSON.stringify(ops, null, 2))}</pre></div>
+                    </details>
+                ` : '';
+                return sections + opsBlock;
+            }
+            return `<div class="log-body">${escapeHtml(fallbackText || 'N/A')}</div>`;
+        }
+
+        function renderLongItemsList(items) {
+            if (!items || !Array.isArray(items) || items.length === 0) {
+                return `<div class="log-body">N/A</div>`;
+            }
+            return items.map((item, index) => `
+                <details>
+                    <summary>${index + 1}. ${escapeHtml(item.headline_or_question || item.source_id || 'item')} (${escapeHtml(item.source_type || 'unknown')})</summary>
+                    <div class="log-body"><pre>${escapeHtml(JSON.stringify(item, null, 2))}</pre></div>
+                </details>
+            `).join('');
+        }
+
+        function renderLongContext(op) {
+            const stats = op.long_gating_stats || {};
+            const hasStructured = Boolean(stats.has_structured_context);
+            if (!hasStructured) {
+                return `<div class="log-body">legacy log / no structured long context</div>`;
+            }
+            const raw = op.long_inputs_raw || {};
+            const longView = op.long_horizon_view || {};
+            const reflection = op.long_reflection || {};
+            const dailyReview = op.daily_review || {};
+            const rawSummary = {
+                news_count: (raw.news_items || []).length,
+                polymarket_count: (raw.polymarket_items || []).length,
+                meta: raw.meta || {}
+            };
+            return `
+                <details>
+                    <summary>Long Horizon View</summary>
+                    <div class="log-body"><pre>${escapeHtml(JSON.stringify(longView, null, 2))}</pre></div>
+                </details>
+                <details>
+                    <summary>Long Gating Stats</summary>
+                    <div class="log-body"><pre>${escapeHtml(JSON.stringify(stats, null, 2))}</pre></div>
+                </details>
+                <details>
+                    <summary>Long Reflection Snapshot</summary>
+                    <div class="log-body"><pre>${escapeHtml(JSON.stringify({
+                        active_hypotheses: reflection.active_hypotheses || [],
+                        invalidated_hypotheses: reflection.invalidated_hypotheses || [],
+                        news_case_log_count: Array.isArray(reflection.news_case_log) ? reflection.news_case_log.length : 0
+                    }, null, 2))}</pre></div>
+                </details>
+                <details>
+                    <summary>Daily Review Audit</summary>
+                    <div class="log-body"><pre>${escapeHtml(JSON.stringify(dailyReview || {
+                        note: "no daily review payload on this log"
+                    }, null, 2))}</pre></div>
+                </details>
+                <details>
+                    <summary>Kept Long Inputs (${stats.kept_count || 0})</summary>
+                    ${renderLongItemsList((op.long_inputs_kept || {}).items)}
+                </details>
+                <details>
+                    <summary>Dropped Long Inputs (${stats.dropped_count || 0})</summary>
+                    ${renderLongItemsList((op.long_inputs_dropped || {}).items)}
+                </details>
+                <details>
+                    <summary>Raw Long Inputs (${stats.raw_count || 0})</summary>
+                    <div class="log-body"><pre>${escapeHtml(JSON.stringify(rawSummary, null, 2))}</pre></div>
+                    <details>
+                        <summary>Raw JSON</summary>
+                        <div class="log-body"><pre>${escapeHtml(JSON.stringify(raw, null, 2))}</pre></div>
+                    </details>
+                </details>
+            `;
+        }
+
+        fetchData();
+        window.onresize = () => {
+            if (pageSections.chart.classList.contains('active')) {
+                chart.applyOptions({ width: chartContainer.clientWidth });
+                chart.timeScale().fitContent();
+            }
+        };
+    </script>
+</body>
+</html>
